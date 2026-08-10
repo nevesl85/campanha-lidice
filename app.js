@@ -756,7 +756,7 @@ function formularioEvento(e = null) {
       descricao: $('#e-desc', m).value.trim()
     };
 
-    const marcados = $('.lista-pessoas input:checked', m).map(x => x.value);
+    const marcados = $$('.lista-pessoas input:checked', m).map(x => x.value);
     let idEvento = ed ? e.id : null;
 
     if (ed) {
