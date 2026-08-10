@@ -233,6 +233,34 @@ tr:last-child td{border-bottom:none}
 .leitura{white-space:pre-wrap;font-size:15.5px;line-height:1.72}
 .marca-busca{background:#FDF3CE;border-radius:3px;padding:0 1px}
 
+/* ---------- Projetos de Lei ---------- */
+.grade-proj{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.proj{background:var(--branco);border:1px solid var(--borda);border-radius:var(--raio);
+  box-shadow:var(--sombra);padding:16px 17px 13px;display:flex;flex-direction:column;gap:10px}
+.proj .cab{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.proj .ref{font-size:12.5px;font-weight:700;color:var(--magenta);letter-spacing:.2px}
+.proj p{font-size:13.5px;color:var(--texto-2);line-height:1.55}
+.proj .pe{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  border-top:1px solid var(--borda);padding-top:9px;margin-top:auto;font-size:11.5px}
+.proj .pe a{color:var(--magenta-2);text-decoration:none;font-weight:600}
+.proj .pe a:hover{text-decoration:underline}
+.selo-area{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  background:var(--rosa-clara);color:#9C1B6B;border-radius:5px;padding:2px 7px;white-space:nowrap}
+.selo-sit{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  border-radius:5px;padding:2px 7px;white-space:nowrap}
+.selo-sit.lei{background:#F1E3F7;color:#7B2A8D}
+.selo-sit.senado{background:#FDF3CE;color:#8A6A00}
+
+/* ---------- Notícias ---------- */
+.noticia{display:flex;gap:14px;padding:13px 16px;border-bottom:1px solid var(--borda);
+  align-items:baseline;flex-wrap:wrap}
+.noticia:last-child{border-bottom:none}
+.noticia .veic{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--magenta);min-width:110px;flex-shrink:0}
+.noticia a{font-size:14.5px;color:var(--texto);text-decoration:none;line-height:1.4;flex:1;min-width:220px}
+.noticia a:hover{color:var(--magenta);text-decoration:underline}
+.noticia .quando{font-size:11.5px;color:var(--texto-2);flex-shrink:0;margin-left:auto}
+
 /* ---------- Aviso flutuante ---------- */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(120px);
   background:var(--magenta);color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:500;
@@ -315,6 +343,8 @@ tr:last-child td{border-bottom:none}
       <button data-tela="fotos"><span class="ic">▣</span> Fotos</button>
       <button data-tela="bahia"><span class="ic">◈</span> Painel Bahia</button>
       <button data-tela="notas"><span class="ic">✎</span> Notas de discurso</button>
+      <button data-tela="projetos"><span class="ic">§</span> Projetos de Lei</button>
+      <button data-tela="noticias"><span class="ic">◉</span> Notícias</button>
       <button data-tela="equipe" id="nav-equipe"><span class="ic">◍</span> Equipe</button>
     </nav>
     <div class="rodape-menu">
@@ -401,6 +431,44 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
       <div id="grade-notas" class="grade-notas"></div>
+    </section>
+
+    <!-- ---- PROJETOS DE LEI ---- -->
+    <section id="tela-projetos" class="oculto">
+      <div class="topo">
+        <div>
+          <h2>Projetos de Lei</h2>
+          <p id="resumo-projetos">—</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="campo" id="filtro-situacao" style="width:auto;min-width:150px">
+            <option value="">Todas as situações</option>
+            <option value="lei">Virou lei</option>
+            <option value="senado">Aprovado, no Senado</option>
+          </select>
+          <select class="campo" id="filtro-area-proj" style="width:auto;min-width:160px">
+            <option value="">Todas as áreas</option>
+          </select>
+        </div>
+      </div>
+      <div id="grade-proj" class="grade-proj"></div>
+    </section>
+
+    <!-- ---- NOTÍCIAS ---- -->
+    <section id="tela-noticias" class="oculto">
+      <div class="topo">
+        <div>
+          <h2>Notícias atualizadas</h2>
+          <p id="resumo-noticias">—</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="campo" id="filtro-veiculo" style="width:auto;min-width:170px">
+            <option value="">Todos os veículos</option>
+          </select>
+          <button class="btn sec" id="bt-recarregar-noticias">Recarregar</button>
+        </div>
+      </div>
+      <div class="cartao" id="lista-noticias"></div>
     </section>
 
     <!-- ---- EQUIPE ---- -->
