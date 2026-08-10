@@ -15,6 +15,9 @@ const estado = {
   notas: [],
   projetos: [],
   noticias: [],
+  entregas: [],
+  filtroAreaEnt: '',
+  filtroAnoEnt: '',
   filtroSituacao: '',
   filtroAreaProj: '',
   filtroVeiculo: '',
@@ -233,7 +236,8 @@ async function iniciar(sessao) {
   await carregarPessoas();
   await Promise.all([carregarTarefas(), carregarEventos(), carregarFotos(),
                      carregarNotas(), carregarProjetos(),
-                     carregarNoticias(), carregarIndicadores()]);
+                     carregarNoticias(), carregarEntregas(),
+                     carregarIndicadores()]);
   escutarTarefas();
 }
 
@@ -1360,3 +1364,69 @@ $('#bt-recarregar-noticias').onclick = async () => {
   b.disabled = false; b.textContent = 'Recarregar';
   toast('Lista atualizada.');
 };
+
+
+/* ============================================================
+   Entregas do Governo do Estado
+   Cada item precisa de link para pagina oficial do estado.
+   Selo "parcial" marca o que ainda deve ser conferido na fonte.
+   ============================================================ */
+async function carregarEntregas() {
+  const { data, error } = await sb.from('entregas').select('*')
+    .order('area').order('ano', { ascending: false, nullsFirst: false });
+  if (error) return toast(error.message, true);
+  estado.entregas = data || [];
+  desenharEntregas();
+}
+
+function desenharEntregas() {
+  const todas = estado.entregas;
+  const lista = todas.filter(e =>
+    (!estado.filtroAreaEnt || e.area === estado.filtroAreaEnt) &&
+    (!estado.filtroAnoEnt || String(e.ano) === estado.filtroAnoEnt));
+
+  $('#resumo-entregas').textContent = todas.length
+    ? `${todas.length} entrega(s) com fonte oficial do Governo da Bahia`
+    : 'Nada cadastrado ainda';
+
+  const areas = [...new Set(todas.map(e => e.area))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  $('#filtro-area-ent').innerHTML = '<option value="">Todas as áreas</option>'
+    + areas.map(a => `<option ${estado.filtroAreaEnt === a ? 'selected' : ''}>${esc(a)}</option>`).join('');
+
+  const anos = [...new Set(todas.map(e => e.ano).filter(Boolean))].sort((a, b) => b - a);
+  $('#filtro-ano-ent').innerHTML = '<option value="">Todos os anos</option>'
+    + anos.map(a => `<option ${estado.filtroAnoEnt === String(a) ? 'selected' : ''}>${a}</option>`).join('');
+
+  if (!lista.length) {
+    $('#lista-entregas').innerHTML = '<div class="cartao"><div class="vazio">Nenhuma entrega neste filtro.</div></div>';
+    return;
+  }
+
+  const grupos = {};
+  lista.forEach(e => { (grupos[e.area] = grupos[e.area] || []).push(e); });
+
+  $('#lista-entregas').innerHTML = Object.keys(grupos)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    .map(area => `
+      <div class="grupo-ent">
+        <h3>${esc(area)}</h3>
+        <div class="cartao">
+          ${grupos[area].map(e => `
+            <div class="ent">
+              <span class="ano">${e.ano || ''}</span>
+              <div class="corpo">
+                <strong>${esc(e.titulo)}${e.municipio ? ' · ' + esc(e.municipio) : ''}</strong>
+                <p>${esc(e.descricao)}</p>
+                <div class="rodape">
+                  <a href="${esc(e.url_fonte)}" target="_blank" rel="noopener">${esc(e.fonte)}</a>
+                  ${e.confianca === 'parcial' ? '<span class="selo parcial">conferir</span>' : ''}
+                  ${e.nota ? '<span>' + esc(e.nota) + '</span>' : ''}
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+}
+
+$('#filtro-area-ent').onchange = e => { estado.filtroAreaEnt = e.target.value; desenharEntregas(); };
+$('#filtro-ano-ent').onchange = e => { estado.filtroAnoEnt = e.target.value; desenharEntregas(); };
