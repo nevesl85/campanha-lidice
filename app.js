@@ -1287,7 +1287,7 @@ function desenharProjetos() {
 
   const sel = $('#filtro-area-proj');
   const areas = [...new Set(estado.projetos.map(p => p.area))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  sel.innerHTML = '<option value="">Todas as areas</option>'
+  sel.innerHTML = '<option value="">Todas as áreas</option>'
     + areas.map(a => `<option ${estado.filtroAreaProj === a ? 'selected' : ''}>${esc(a)}</option>`).join('');
 
   if (!lista.length) {
@@ -1305,7 +1305,7 @@ function desenharProjetos() {
       <p>${esc(p.ementa)}</p>
       <div class="pe">
         <span>${p.data_situacao ? dataBR(p.data_situacao) : ''}</span>
-        <a href="${esc(p.url)}" target="_blank" rel="noopener">Ver na Camara</a>
+        <a href="${esc(p.url)}" target="_blank" rel="noopener">Ver na Câmara</a>
       </div>
     </article>`).join('');
 }
@@ -1331,16 +1331,16 @@ function desenharNoticias() {
   const lista = estado.noticias.filter(n => !estado.filtroVeiculo || n.veiculo === estado.filtroVeiculo);
 
   $('#resumo-noticias').textContent = estado.noticias.length
-    ? `${estado.noticias.length} materia(s) sobre a eleicao, atualizadas de hora em hora`
+    ? `${estado.noticias.length} matéria(s) sobre a eleição, atualizadas de hora em hora`
     : 'Nada capturado ainda';
 
   const sel = $('#filtro-veiculo');
   const veics = [...new Set(estado.noticias.map(n => n.veiculo))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  sel.innerHTML = '<option value="">Todos os veiculos</option>'
+  sel.innerHTML = '<option value="">Todos os veículos</option>'
     + veics.map(v => `<option ${estado.filtroVeiculo === v ? 'selected' : ''}>${esc(v)}</option>`).join('');
 
   if (!lista.length) {
-    $('#lista-noticias').innerHTML = '<div class="vazio"><span class="big">&#9673;</span>Nenhuma noticia neste filtro.</div>';
+    $('#lista-noticias').innerHTML = '<div class="vazio"><span class="big">&#9673;</span>Nenhuma notícia neste filtro.</div>';
     return;
   }
 
@@ -1355,7 +1355,7 @@ function desenharNoticias() {
 $('#filtro-veiculo').onchange = e => { estado.filtroVeiculo = e.target.value; desenharNoticias(); };
 $('#bt-recarregar-noticias').onclick = async () => {
   const b = $('#bt-recarregar-noticias');
-  b.disabled = true; b.textContent = 'Buscando...';
+  b.disabled = true; b.textContent = 'Buscando…';
   await carregarNoticias();
   b.disabled = false; b.textContent = 'Recarregar';
   toast('Lista atualizada.');
