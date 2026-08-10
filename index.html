@@ -293,6 +293,22 @@ tr:last-child td{border-bottom:none}
 .pessoa-op:hover{background:var(--rosa-clara)}
 .pessoa-op input{accent-color:var(--magenta);cursor:pointer}
 
+/* ---------- Entregas do Governo do Estado ---------- */
+.grupo-ent{margin-bottom:18px}
+.grupo-ent > h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--magenta);
+  font-weight:700;margin-bottom:9px;padding-left:2px}
+.ent{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--borda);align-items:flex-start}
+.ent:last-child{border-bottom:none}
+.ent .ano{font-size:12px;font-weight:700;color:var(--texto-2);min-width:40px;flex-shrink:0;
+  font-variant-numeric:tabular-nums;padding-top:2px}
+.ent .corpo{flex:1;min-width:0}
+.ent .corpo strong{display:block;font-size:14.5px;line-height:1.35;margin-bottom:3px}
+.ent .corpo p{font-size:13.5px;color:var(--texto-2);line-height:1.55}
+.ent .rodape{margin-top:7px;font-size:11.5px;color:var(--texto-2);display:flex;gap:9px;
+  flex-wrap:wrap;align-items:center}
+.ent .rodape a{color:var(--magenta-2);font-weight:600;text-decoration:none}
+.ent .rodape a:hover{text-decoration:underline}
+
 /* ---------- Aviso flutuante ---------- */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(120px);
   background:var(--magenta);color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:500;
@@ -377,6 +393,7 @@ tr:last-child td{border-bottom:none}
       <button data-tela="notas"><span class="ic">✎</span> Notas de discurso</button>
       <button data-tela="projetos"><span class="ic">§</span> Projetos de Lei</button>
       <button data-tela="noticias"><span class="ic">◉</span> Notícias</button>
+      <button data-tela="entregas"><span class="ic">▲</span> Entregas do Estado</button>
       <button data-tela="equipe" id="nav-equipe"><span class="ic">◍</span> Equipe</button>
     </nav>
     <div class="rodape-menu">
@@ -501,6 +518,25 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
       <div class="cartao" id="lista-noticias"></div>
+    </section>
+
+    <!-- ---- ENTREGAS DO GOVERNO DO ESTADO ---- -->
+    <section id="tela-entregas" class="oculto">
+      <div class="topo">
+        <div>
+          <h2>Entregas Governo do Estado</h2>
+          <p id="resumo-entregas">—</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="campo" id="filtro-area-ent" style="width:auto;min-width:160px">
+            <option value="">Todas as áreas</option>
+          </select>
+          <select class="campo" id="filtro-ano-ent" style="width:auto;min-width:130px">
+            <option value="">Todos os anos</option>
+          </select>
+        </div>
+      </div>
+      <div id="lista-entregas"></div>
     </section>
 
     <!-- ---- EQUIPE ---- -->
