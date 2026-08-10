@@ -20,6 +20,12 @@ armazenamento de fotos e atualização em tempo real. Publicada via GitHub Pages
 - **candidata** — tudo, mais permissão de editar os indicadores do Painel Bahia.
 - **equipe** — tarefas, comentários, agenda, fotos e notas de discurso; lê o Painel Bahia.
 
+## Como se entra
+
+Duas portas: e-mail e senha, ou **Entrar com Google**. As duas caem na mesma regra — a conta nasce
+bloqueada e um administrador libera em *Equipe*. Pela porta do Google, o nome e a foto vêm do
+próprio perfil Google; pela porta do e-mail, o nome é o que a pessoa digitou.
+
 O primeiro administrador é semeado na tabela `admins_iniciais`: quem se cadastrar com o e-mail
 listado ali nasce como **admin** já aprovado. Hoje consta `neves.l@gmail.com`.
 
@@ -39,6 +45,24 @@ sozinha. Cada consulta é avaliada no banco contra o usuário autenticado.
   descarta essas alterações.
 - O bucket de fotos é privado; as imagens são servidas por URL assinada com validade de uma hora.
 
+## Paleta
+
+Tirada do material de campanha. Vive toda em variáveis CSS no topo do `index.html` — trocar uma
+linha ali repinta o sistema inteiro.
+
+| Papel | Cor | Onde aparece |
+|---|---|---|
+| Magenta | `#B81E7C` | Barra lateral, botões, marca |
+| Magenta claro | `#D62C90` | Foco de campo, links, avatares |
+| Rosa clara | `#FCE7F3` | Fundos de destaque, avisos |
+| Amarelo | `#F7CE17` | Acentos: sublinhado dos títulos, aba ativa, avatar, grafismo |
+| Roxo | `#7B2A8D` | Variação positiva nos gráficos e pastilhas |
+| Fundo | `#FBF5F8` | Papel de fundo, levemente rosado |
+| Texto | `#2B1226` / `#7B6274` | Corpo e apoio, em ameixa em vez de cinza |
+
+O asterisco amarelo do cartaz virou o favicon e o grafismo do canto da tela de entrada.
+Vermelho segue reservado para erro e prazo vencido — é a única cor fora da paleta, e é de propósito.
+
 ## Estrutura
 
 ```
@@ -50,11 +74,13 @@ config.js    endereço e chave publicável do Supabase
 
 ## Publicação
 
-1. Crie o repositório no GitHub.
-2. Suba estes arquivos na raiz do `main`.
-3. Em *Settings → Pages*, escolha `Deploy from a branch`, branch `main`, pasta `/ (root)`.
-4. No painel do Supabase, em *Authentication → URL Configuration*, adicione o endereço do
-   GitHub Pages em **Site URL** e em **Redirect URLs**.
+No ar em **https://nevesl85.github.io/campanha-lidice/**, servido pelo GitHub Pages a partir da
+raiz do branch `main` em `github.com/nevesl85/campanha-lidice`. Commitar na `main` republica o site
+em cerca de um minuto.
+
+No Supabase, *Authentication → URL Configuration* já aponta para esse endereço, e a confirmação
+por e-mail está **desligada** — o controle de entrada é a aprovação do administrador em *Equipe*,
+não o e-mail. Se um dia configurar SMTP próprio, vale religar a confirmação.
 
 ## Manutenção
 

@@ -182,6 +182,34 @@ $('#form-login').onsubmit = async e => {
   }
 };
 
+$('#bt-google').onclick = async () => {
+  const bt = $('#bt-google');
+  bt.disabled = true;
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      // volta para a própria página, sem a barra de consulta
+      redirectTo: location.origin + location.pathname,
+      queryParams: { prompt: 'select_account' }
+    }
+  });
+  if (error) {
+    bt.disabled = false;
+    msgLogin(String(error.message).includes('not enabled')
+      ? 'O login pelo Google ainda não foi habilitado no Supabase.'
+      : error.message);
+  }
+};
+
+// Se o Google devolver um erro, ele vem no fragmento da URL.
+(() => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('error_description')) {
+    msgLogin(decodeURIComponent(h.get('error_description').replace(/\+/g, ' ')));
+    history.replaceState(null, '', location.pathname);
+  }
+})();
+
 $('#bt-sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 $('#bt-sair-espera').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
@@ -964,7 +992,7 @@ function desenharBahia() {
     const primeiro = Number(itens[0].valor), ultimo = Number(itens[itens.length - 1].valor);
     const subiu = ultimo >= primeiro;
     const positivo = (bom === 'maior' && subiu) || (bom === 'menor' && !subiu);
-    const cor = positivo ? '#15803d' : '#c0392b';
+    const cor = positivo ? '#7B2A8D' : '#c0392b';
 
     estado.graficos.push(new Chart(cv, {
       type: 'bar',
@@ -973,7 +1001,7 @@ function desenharBahia() {
         datasets: [{
           data: itens.map(i => i.valor === null ? null : Number(i.valor)),
           backgroundColor: itens.map((_, k) =>
-            k === itens.length - 1 ? cor : (positivo ? 'rgba(21,128,61,.28)' : 'rgba(192,57,43,.25)')),
+            k === itens.length - 1 ? cor : (positivo ? 'rgba(123,42,141,.30)' : 'rgba(192,57,43,.25)')),
           borderRadius: 4,
           borderSkipped: false
         }]
@@ -993,10 +1021,10 @@ function desenharBahia() {
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#5a6b64' } },
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#7B6274' } },
           y: {
             grid: { color: 'rgba(0,0,0,.05)' },
-            ticks: { font: { size: 10 }, color: '#5a6b64', maxTicksLimit: 4,
+            ticks: { font: { size: 10 }, color: '#7B6274', maxTicksLimit: 4,
                      callback: v => numeroBR(v, '') },
             beginAtZero: false
           }
