@@ -1415,8 +1415,10 @@ function desenharEntregas() {
             <div class="ent">
               <span class="ano">${e.ano || ''}</span>
               <div class="corpo">
-                <strong>${esc(e.titulo)}${e.municipio ? ' · ' + esc(e.municipio) : ''}</strong>
+                <strong>${esc(e.titulo)}${e.municipio ? ' · ' + esc(e.municipio) : ''}${e.situacao === 'em_obras' ? ' <span class="selo obras">em obras</span>' : ''}</strong>
                 <p>${esc(e.descricao)}</p>
+                ${e.numeros ? `<p class="numeros"><b>Números.</b> ${esc(e.numeros)}</p>` : ''}
+                ${e.importa ? `<p class="importa"><b>Por que importa.</b> ${esc(e.importa)}</p>` : ''}
                 <div class="rodape">
                   <a href="${esc(e.url_fonte)}" target="_blank" rel="noopener">${esc(e.fonte)}</a>
                   ${e.confianca === 'parcial' ? '<span class="selo parcial">conferir</span>' : ''}
