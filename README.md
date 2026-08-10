@@ -1,4 +1,4 @@
-# Campanha Lídice da Mata — área de trabalho da equipe
+# Campanha Lídice da Mata: área de trabalho da equipe
 
 Aplicação web estática (HTML + JS puro, sem build) apoiada no Supabase para login, banco de dados,
 armazenamento de fotos e atualização em tempo real. Publicada via GitHub Pages.
@@ -16,13 +16,13 @@ armazenamento de fotos e atualização em tempo real. Publicada via GitHub Pages
 
 ## Papéis
 
-- **admin** — tudo, incluindo liberar contas e trocar papéis.
-- **candidata** — tudo, mais permissão de editar os indicadores do Painel Bahia.
-- **equipe** — tarefas, comentários, agenda, fotos e notas de discurso; lê o Painel Bahia.
+- **admin**: tudo, incluindo liberar contas e trocar papéis.
+- **candidata**: tudo, mais permissão de editar os indicadores do Painel Bahia.
+- **equipe**: tarefas, comentários, agenda, fotos e notas de discurso; lê o Painel Bahia.
 
 ## Como se entra
 
-Duas portas: e-mail e senha, ou **Entrar com Google**. As duas caem na mesma regra — a conta nasce
+Duas portas: e-mail e senha, ou **Entrar com Google**. As duas caem na mesma regra. A conta nasce
 bloqueada e um administrador libera em *Equipe*. Pela porta do Google, o nome e a foto vêm do
 próprio perfil Google; pela porta do e-mail, o nome é o que a pessoa digitou.
 
@@ -35,19 +35,19 @@ qualquer pessoa que descubra o endereço do site entre nos dados da campanha.
 ## Segurança
 
 Os dados são protegidos por *Row Level Security* no Postgres, não pelo front-end. A chave que aparece
-em `config.js` é a chave publicável do Supabase — ela é pública por natureza e não dá acesso a nada
+em `config.js` é a chave publicável do Supabase. Ela é pública por natureza e não dá acesso a nada
 sozinha. Cada consulta é avaliada no banco contra o usuário autenticado.
 
 - Nenhuma linha é legível por quem não está logado.
 - Quem está logado mas não foi liberado não lê nada.
-- Só o autor de uma tarefa, comentário, evento ou foto — ou um administrador — pode excluí-los.
+- Só o autor de uma tarefa, comentário, evento ou foto, ou um administrador, pode excluí-los.
 - Um usuário comum não consegue se auto-promover a admin nem se auto-liberar: um gatilho no banco
   descarta essas alterações.
 - O bucket de fotos é privado; as imagens são servidas por URL assinada com validade de uma hora.
 
 ## Paleta
 
-Tirada do material de campanha. Vive toda em variáveis CSS no topo do `index.html` — trocar uma
+Tirada do material de campanha. Vive toda em variáveis CSS no topo do `index.html`. Trocar uma
 linha ali repinta o sistema inteiro.
 
 | Papel | Cor | Onde aparece |
@@ -61,7 +61,7 @@ linha ali repinta o sistema inteiro.
 | Texto | `#2B1226` / `#7B6274` | Corpo e apoio, em ameixa em vez de cinza |
 
 O asterisco amarelo do cartaz virou o favicon e o grafismo do canto da tela de entrada.
-Vermelho segue reservado para erro e prazo vencido — é a única cor fora da paleta, e é de propósito.
+Vermelho segue reservado para erro e prazo vencido. É a única cor fora da paleta, e é de propósito.
 
 ## Estrutura
 
@@ -79,7 +79,7 @@ raiz do branch `main` em `github.com/nevesl85/campanha-lidice`. Commitar na `mai
 em cerca de um minuto.
 
 No Supabase, *Authentication → URL Configuration* já aponta para esse endereço, e a confirmação
-por e-mail está **desligada** — o controle de entrada é a aprovação do administrador em *Equipe*,
+por e-mail está **desligada**. O controle de entrada é a aprovação do administrador em *Equipe*,
 não o e-mail. Se um dia configurar SMTP próprio, vale religar a confirmação.
 
 ## Manutenção
