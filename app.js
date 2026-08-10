@@ -599,7 +599,8 @@ function escutarTarefas() {
    Agenda
    ============================================================ */
 async function carregarEventos() {
-  const { data, error } = await sb.from('eventos').select('*').order('inicio');
+  const { data, error } = await sb.from('eventos')
+    .select('*, evento_participantes(profile_id)').order('inicio');
   if (error) return toast(error.message, true);
   estado.eventos = data || [];
   desenharAgenda();
@@ -632,6 +633,9 @@ function desenharAgenda() {
             ${e.tipo ? ' · ' + esc(e.tipo) : ''}
           </div>
           ${e.descricao ? `<div class="sub" style="margin-top:5px;white-space:pre-wrap">${esc(e.descricao)}</div>` : ''}
+          ${(e.evento_participantes || []).length ? `<div class="participantes">
+            ${e.evento_participantes.map(p => `<span class="chip-pessoa"><span class="bolinha">${esc(iniciais(nomeDe(p.profile_id)))}</span>${esc(nomeDe(p.profile_id))}</span>`).join('')}
+          </div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
           <button class="btn sec mini" data-ed-ev="${e.id}">Editar</button>
@@ -662,6 +666,7 @@ $('#bt-novo-evento').onclick = () => formularioEvento();
 
 function formularioEvento(e = null) {
   const ed = !!e;
+  const jaEstao = new Set((e?.evento_participantes || []).map(x => x.profile_id));
   const paraInput = iso => iso ? new Date(new Date(iso).getTime()
     - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
 
@@ -700,6 +705,17 @@ function formularioEvento(e = null) {
           </select></div>
       </div>
       <div class="bloco">
+        <label class="rot">Quem participa</label>
+        <div class="lista-pessoas">
+          ${estado.pessoas.map(p => `
+            <label class="pessoa-op">
+              <input type="checkbox" value="${p.id}" ${jaEstao.has(p.id) ? 'checked' : ''}>
+              <span class="bolinha">${esc(iniciais(p.nome || p.email))}</span>
+              <span>${esc(p.nome || p.email)}</span>
+            </label>`).join('')}
+        </div>
+      </div>
+      <div class="bloco">
         <label class="rot">Observações</label>
         <textarea class="campo" id="e-desc" placeholder="Quem acompanha, o que levar, contatos">${esc(e?.descricao || '')}</textarea>
       </div>
@@ -731,10 +747,34 @@ function formularioEvento(e = null) {
       descricao: $('#e-desc', m).value.trim()
     };
 
-    const { error } = ed
-      ? await sb.from('eventos').update(dados).eq('id', e.id)
-      : await sb.from('eventos').insert({ ...dados, criado_por: estado.perfil.id });
-    if (error) return toast(error.message, true);
+    const marcados = $('.lista-pessoas input:checked', m).map(x => x.value);
+    let idEvento = ed ? e.id : null;
+
+    if (ed) {
+      const { error } = await sb.from('eventos').update(dados).eq('id', e.id);
+      if (error) return toast(error.message, true);
+    } else {
+      const { data: criado, error } = await sb.from('eventos')
+        .insert({ ...dados, criado_por: estado.perfil.id }).select('id').single();
+      if (error) return toast(error.message, true);
+      idEvento = criado.id;
+    }
+
+    // acerta a lista de presentes: entra quem foi marcado, sai quem foi desmarcado
+    const agora = new Set(marcados);
+    const entram = marcados.filter(id => !jaEstao.has(id));
+    const saem = [...jaEstao].filter(id => !agora.has(id));
+
+    if (entram.length) {
+      const { error } = await sb.from('evento_participantes')
+        .insert(entram.map(pid => ({ evento_id: idEvento, profile_id: pid })));
+      if (error) toast('Compromisso salvo, mas os participantes falharam: ' + error.message, true);
+    }
+    if (saem.length) {
+      await sb.from('evento_participantes').delete()
+        .eq('evento_id', idEvento).in('profile_id', saem);
+    }
+
     fecharModal(); toast(ed ? 'Compromisso atualizado.' : 'Compromisso adicionado.'); carregarEventos();
   };
 }
