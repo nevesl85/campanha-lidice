@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#B81E7C">
 <title>Campanha Lídice da Mata</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23B81E7C'/><g stroke='%23F7CE17' stroke-width='13' stroke-linecap='round'><path d='M50 22v56'/><path d='M26 36l48 28'/><path d='M74 36L26 64'/></g></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --magenta:#B81E7C; --magenta-2:#D62C90; --rosa-clara:#FCE7F3;
@@ -18,10 +21,13 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-  background:var(--areia); color:var(--texto); font-size:15px; line-height:1.5;
-  -webkit-font-smoothing:antialiased;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--areia); color:var(--texto); font-size:15px; line-height:1.55;
+  letter-spacing:-.006em;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
 }
+h1,h2,h3,h4{letter-spacing:-.022em}
+.ind .atual,.coluna h3 span,.noticia .quando,.data-caixa .dia{font-variant-numeric:tabular-nums}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
 a{color:var(--magenta-2)}
@@ -65,7 +71,8 @@ label.rot{display:block;font-size:12.5px;font-weight:600;color:var(--texto-2);ma
 
 /* ---------- Estrutura ---------- */
 #app{display:grid;grid-template-columns:238px 1fr;min-height:100dvh}
-aside{background:var(--magenta);color:#F7DCEC;padding:20px 14px;display:flex;flex-direction:column;gap:6px;
+aside{background:linear-gradient(168deg,#6E2585 0%,var(--magenta) 58%,#C7237F 100%);
+  color:#F7DCEC;padding:20px 14px;display:flex;flex-direction:column;gap:6px;
   position:sticky;top:0;height:100dvh}
 .marca{padding:4px 10px 20px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:12px}
 .marca strong{display:block;color:#fff;font-size:15.5px;letter-spacing:-.2px}
@@ -73,8 +80,9 @@ aside{background:var(--magenta);color:#F7DCEC;padding:20px 14px;display:flex;fle
 nav button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:9px;
   color:#F7DCEC;font-size:14px;font-weight:500;text-align:left;transition:background .15s,color .15s}
 nav button:hover{background:rgba(255,255,255,.08);color:#fff}
-nav button.on{background:rgba(255,255,255,.15);color:#fff;font-weight:600;
-  box-shadow:inset 3px 0 0 var(--amarelo)}
+nav button.on{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+nav button.on::after{content:'';margin-left:auto;width:13px;height:13px;flex-shrink:0;
+  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g stroke='%23F7CE17' stroke-width='9' stroke-linecap='round'><path d='M50 14v72'/><path d='M19 32l62 36'/><path d='M81 32L19 68'/></g></svg>") center/contain no-repeat}
 nav button .ic{width:18px;text-align:center;font-size:15px}
 .rodape-menu{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
 .eu{display:flex;align-items:center;gap:9px;padding:8px 10px;font-size:13px}
@@ -84,14 +92,18 @@ nav button .ic{width:18px;text-align:center;font-size:15px}
 .eu strong{display:block;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .eu small{color:#E9A6D0;font-size:11.5px;text-transform:capitalize}
 
-main{padding:26px 30px 60px;max-width:1280px;width:100%}
+main{padding:26px 30px 60px;max-width:1280px;width:100%;
+  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g stroke='%23F7CE17' stroke-width='9' stroke-linecap='round'><path d='M50 14v72'/><path d='M19 32l62 36'/><path d='M81 32L19 68'/></g></svg>") no-repeat right -70px top -60px;background-size:250px 250px}
 .topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
 .topo h2{font-size:22px;letter-spacing:-.4px;position:relative;display:inline-block}
 .topo h2::after{content:'';position:absolute;left:0;right:0;bottom:-5px;height:4px;
   border-radius:3px;background:var(--amarelo)}
 .topo p{color:var(--texto-2);font-size:13.5px;margin-top:3px}
 .cartao{background:var(--branco);border:1px solid var(--borda);border-radius:var(--raio);box-shadow:var(--sombra)}
-.vazio{text-align:center;padding:44px 20px;color:var(--texto-2);font-size:14px}
+.vazio{position:relative;text-align:center;padding:56px 20px;color:var(--texto-2);font-size:14px}
+.vazio::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g stroke='%23F7CE17' stroke-width='9' stroke-linecap='round'><path d='M50 14v72'/><path d='M19 32l62 36'/><path d='M81 32L19 68'/></g></svg>") center/110px no-repeat}
+.vazio .big{display:none}
 .vazio .big{font-size:30px;display:block;margin-bottom:8px;opacity:.5}
 .carregando{padding:40px;text-align:center;color:var(--texto-2);font-size:14px}
 
