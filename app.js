@@ -37,6 +37,11 @@ const COLUNAS = [
 
 const PRIORIDADES = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' };
 
+const SIT_EVENTO = {
+  a_confirmar: 'A confirmar', confirmado: 'Confirmado',
+  cumprido: 'Cumprido', cancelado: 'Cancelado'
+};
+
 const AREAS_BAHIA = [
   { id: 'economia',  nome: 'Economia'          },
   { id: 'emprego',   nome: 'Emprego e renda'   },
@@ -600,7 +605,7 @@ function escutarTarefas() {
    ============================================================ */
 async function carregarEventos() {
   const { data, error } = await sb.from('eventos')
-    .select('*, evento_participantes(profile_id)').order('inicio');
+    .select('*, evento_participantes(profile_id, nome)').order('inicio');
   if (error) return toast(error.message, true);
   estado.eventos = data || [];
   desenharAgenda();
@@ -618,15 +623,15 @@ function desenharAgenda() {
   const linha = e => {
     const d = new Date(e.inicio);
     const passou = new Date(e.fim || e.inicio) < agora;
-    const podeApagar = e.criado_por === estado.perfil.id || estado.perfil.papel === 'admin';
+    const podeApagar = estado.perfil.papel === 'admin';
     return `
-      <div class="evento ${passou ? 'passado' : ''}">
+      <div class="evento ${passou ? 'passado' : ''} ${e.situacao}">
         <div class="data-caixa">
           <div class="dia">${String(d.getDate()).padStart(2, '0')}</div>
           <div class="mes">${d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</div>
         </div>
         <div class="det">
-          <strong>${esc(e.titulo)} ${e.confirmado ? '<span class="tag sim">confirmado</span>' : '<span class="tag nao">a confirmar</span>'}</strong>
+          <strong>${esc(e.titulo)} <span class="tag ${e.situacao}">${SIT_EVENTO[e.situacao] || e.situacao}</span></strong>
           <div class="sub">
             ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             ${e.local ? ' · ' + esc(e.local) : ''}${e.cidade ? ', ' + esc(e.cidade) : ''}
@@ -634,7 +639,7 @@ function desenharAgenda() {
           </div>
           ${e.descricao ? `<div class="sub" style="margin-top:5px;white-space:pre-wrap">${esc(e.descricao)}</div>` : ''}
           ${(e.evento_participantes || []).length ? `<div class="participantes">
-            ${e.evento_participantes.map(p => `<span class="chip-pessoa"><span class="bolinha">${esc(iniciais(nomeDe(p.profile_id)))}</span>${esc(nomeDe(p.profile_id))}</span>`).join('')}
+            ${e.evento_participantes.map(p => `<span class="chip-pessoa"><span class="bolinha">${esc(iniciais(p.nome))}</span>${esc(p.nome)}</span>`).join('')}
           </div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
@@ -655,7 +660,7 @@ function desenharAgenda() {
   $$('[data-ed-ev]').forEach(b => b.onclick = () =>
     formularioEvento(estado.eventos.find(e => e.id === b.dataset.edEv)));
   $$('[data-del-ev]').forEach(b => b.onclick = async () => {
-    if (!confirm('Excluir este compromisso?')) return;
+    if (!confirm('Excluir de vez, sem deixar registro? Para manter o histórico, marque como cancelado em vez de excluir.')) return;
     const { error } = await sb.from('eventos').delete().eq('id', b.dataset.delEv);
     if (error) return toast(error.message, true);
     toast('Compromisso excluído.'); carregarEventos();
@@ -699,9 +704,9 @@ function formularioEvento(e = null) {
               .map(x => `<option ${e?.tipo === x ? 'selected' : ''}>${x}</option>`).join('')}
           </select></div>
         <div><label class="rot">Situação</label>
-          <select class="campo" id="e-conf">
-            <option value="false" ${e && !e.confirmado ? 'selected' : ''}>A confirmar</option>
-            <option value="true"  ${e && e.confirmado ? 'selected' : ''}>Confirmado</option>
+          <select class="campo" id="e-sit">
+            ${Object.entries(SIT_EVENTO).map(([k, v]) =>
+              `<option value="${k}" ${(e?.situacao || 'a_confirmar') === k ? 'selected' : ''}>${v}</option>`).join('')}
           </select></div>
       </div>
       <div class="bloco">
@@ -743,7 +748,7 @@ function formularioEvento(e = null) {
       local: $('#e-local', m).value.trim() || null,
       cidade: $('#e-cidade', m).value.trim() || null,
       tipo: $('#e-tipo', m).value,
-      confirmado: $('#e-conf', m).value === 'true',
+      situacao: $('#e-sit', m).value,
       descricao: $('#e-desc', m).value.trim()
     };
 
@@ -767,7 +772,7 @@ function formularioEvento(e = null) {
 
     if (entram.length) {
       const { error } = await sb.from('evento_participantes')
-        .insert(entram.map(pid => ({ evento_id: idEvento, profile_id: pid })));
+        .insert(entram.map(pid => ({ evento_id: idEvento, profile_id: pid, nome: nomeDe(pid) })));
       if (error) toast('Compromisso salvo, mas os participantes falharam: ' + error.message, true);
     }
     if (saem.length) {
