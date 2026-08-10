@@ -163,7 +163,7 @@ $('#form-login').onsubmit = async e => {
         email, password: senha, options: { data: { nome } }
       });
       if (error) throw error;
-      msgLogin('Conta criada. Se a confirmação por e-mail estiver ativa, confirme antes de entrar. Depois um administrador precisa liberar seu acesso.', 'ok');
+      msgLogin('Conta criada. Agora um administrador da campanha precisa liberar seu acesso.', 'ok');
       trocarModo(false);
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password: senha });
@@ -181,34 +181,6 @@ $('#form-login').onsubmit = async e => {
     bt.textContent = modoCadastro ? 'Criar conta' : 'Entrar';
   }
 };
-
-$('#bt-google').onclick = async () => {
-  const bt = $('#bt-google');
-  bt.disabled = true;
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      // volta para a própria página, sem a barra de consulta
-      redirectTo: location.origin + location.pathname,
-      queryParams: { prompt: 'select_account' }
-    }
-  });
-  if (error) {
-    bt.disabled = false;
-    msgLogin(String(error.message).includes('not enabled')
-      ? 'O login pelo Google ainda não foi habilitado no Supabase.'
-      : error.message);
-  }
-};
-
-// Se o Google devolver um erro, ele vem no fragmento da URL.
-(() => {
-  const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get('error_description')) {
-    msgLogin(decodeURIComponent(h.get('error_description').replace(/\+/g, ' ')));
-    history.replaceState(null, '', location.pathname);
-  }
-})();
 
 $('#bt-sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 $('#bt-sair-espera').onclick = async () => { await sb.auth.signOut(); location.reload(); };
