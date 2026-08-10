@@ -13,6 +13,11 @@ const estado = {
   eventos: [],
   fotos: [],
   notas: [],
+  projetos: [],
+  noticias: [],
+  filtroSituacao: '',
+  filtroAreaProj: '',
+  filtroVeiculo: '',
   indicadores: [],
   areaBahia: 'economia',
   filtroResp: '',
@@ -222,7 +227,8 @@ async function iniciar(sessao) {
 
   await carregarPessoas();
   await Promise.all([carregarTarefas(), carregarEventos(), carregarFotos(),
-                     carregarNotas(), carregarIndicadores()]);
+                     carregarNotas(), carregarProjetos(),
+                     carregarNoticias(), carregarIndicadores()]);
   escutarTarefas();
 }
 
@@ -1202,3 +1208,110 @@ function formularioNota(n = null) {
     fecharModal(); toast(ed ? 'Nota atualizada.' : 'Nota criada.'); carregarNotas();
   };
 }
+
+
+/* ============================================================
+   Projetos de Lei
+   Fonte: dados abertos da Camara dos Deputados. So entra o que
+   virou lei ou ja foi aprovado pela Camara e esta no Senado.
+   ============================================================ */
+const SITUACOES = { lei: 'Virou lei', senado: 'Aprovado, no Senado' };
+
+async function carregarProjetos() {
+  const { data, error } = await sb.from('projetos').select('*')
+    .order('data_situacao', { ascending: false, nullsFirst: false });
+  if (error) return toast(error.message, true);
+  estado.projetos = data || [];
+  desenharProjetos();
+}
+
+function projetosFiltrados() {
+  return estado.projetos.filter(p =>
+    (!estado.filtroSituacao || p.situacao === estado.filtroSituacao) &&
+    (!estado.filtroAreaProj || p.area === estado.filtroAreaProj));
+}
+
+function desenharProjetos() {
+  const lista = projetosFiltrados();
+  const leis = estado.projetos.filter(p => p.situacao === 'lei').length;
+  const sen = estado.projetos.length - leis;
+
+  $('#resumo-projetos').textContent = estado.projetos.length
+    ? `${leis} viraram lei, ${sen} aprovados e no Senado`
+    : 'Nada cadastrado ainda';
+
+  const sel = $('#filtro-area-proj');
+  const areas = [...new Set(estado.projetos.map(p => p.area))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  sel.innerHTML = '<option value="">Todas as areas</option>'
+    + areas.map(a => `<option ${estado.filtroAreaProj === a ? 'selected' : ''}>${esc(a)}</option>`).join('');
+
+  if (!lista.length) {
+    $('#grade-proj').innerHTML = '<div class="vazio"><span class="big">&sect;</span>Nenhum projeto neste filtro.</div>';
+    return;
+  }
+
+  $('#grade-proj').innerHTML = lista.map(p => `
+    <article class="proj">
+      <div class="cab">
+        <span class="ref">${esc(p.tipo)} ${p.numero}/${p.ano}</span>
+        <span class="selo-sit ${p.situacao}">${SITUACOES[p.situacao] || p.situacao}</span>
+      </div>
+      <span class="selo-area" style="align-self:flex-start">${esc(p.area)}</span>
+      <p>${esc(p.ementa)}</p>
+      <div class="pe">
+        <span>${p.data_situacao ? dataBR(p.data_situacao) : ''}</span>
+        <a href="${esc(p.url)}" target="_blank" rel="noopener">Ver na Camara</a>
+      </div>
+    </article>`).join('');
+}
+
+$('#filtro-situacao').onchange = e => { estado.filtroSituacao = e.target.value; desenharProjetos(); };
+$('#filtro-area-proj').onchange = e => { estado.filtroAreaProj = e.target.value; desenharProjetos(); };
+
+/* ============================================================
+   Noticias
+   Uma tarefa no banco le os feeds de hora em hora e grava so
+   manchete, veiculo, data e link. O texto da materia fica no portal.
+   ============================================================ */
+async function carregarNoticias() {
+  const { data, error } = await sb.from('noticias').select('*')
+    .order('publicado_em', { ascending: false, nullsFirst: false })
+    .limit(300);
+  if (error) return toast(error.message, true);
+  estado.noticias = data || [];
+  desenharNoticias();
+}
+
+function desenharNoticias() {
+  const lista = estado.noticias.filter(n => !estado.filtroVeiculo || n.veiculo === estado.filtroVeiculo);
+
+  $('#resumo-noticias').textContent = estado.noticias.length
+    ? `${estado.noticias.length} materia(s) sobre a eleicao, atualizadas de hora em hora`
+    : 'Nada capturado ainda';
+
+  const sel = $('#filtro-veiculo');
+  const veics = [...new Set(estado.noticias.map(n => n.veiculo))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  sel.innerHTML = '<option value="">Todos os veiculos</option>'
+    + veics.map(v => `<option ${estado.filtroVeiculo === v ? 'selected' : ''}>${esc(v)}</option>`).join('');
+
+  if (!lista.length) {
+    $('#lista-noticias').innerHTML = '<div class="vazio"><span class="big">&#9673;</span>Nenhuma noticia neste filtro.</div>';
+    return;
+  }
+
+  $('#lista-noticias').innerHTML = lista.map(n => `
+    <div class="noticia">
+      <span class="veic">${esc(n.veiculo)}</span>
+      <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.titulo)}</a>
+      <span class="quando">${n.publicado_em ? quandoRelativo(n.publicado_em) : ''}</span>
+    </div>`).join('');
+}
+
+$('#filtro-veiculo').onchange = e => { estado.filtroVeiculo = e.target.value; desenharNoticias(); };
+$('#bt-recarregar-noticias').onclick = async () => {
+  const b = $('#bt-recarregar-noticias');
+  b.disabled = true; b.textContent = 'Buscando...';
+  await carregarNoticias();
+  b.disabled = false; b.textContent = 'Recarregar';
+  toast('Lista atualizada.');
+};
