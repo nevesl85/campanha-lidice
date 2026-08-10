@@ -22,9 +22,11 @@ armazenamento de fotos e atualização em tempo real. Publicada via GitHub Pages
 
 ## Como se entra
 
-Duas portas: e-mail e senha, ou **Entrar com Google**. As duas caem na mesma regra. A conta nasce
-bloqueada e um administrador libera em *Equipe*. Pela porta do Google, o nome e a foto vêm do
-próprio perfil Google; pela porta do e-mail, o nome é o que a pessoa digitou.
+Nome, e-mail e senha. Só isso. A conta nasce bloqueada e um administrador libera em *Equipe*.
+
+Não há login pelo Google. Foi considerado e descartado: exigiria um projeto no Google Cloud e um
+cliente OAuth só para poupar a equipe de criar uma senha. O gatilho `handle_new_user` no banco já
+sabe ler o formato de metadados do Google, então, se um dia essa conta existir, religar é rápido.
 
 O primeiro administrador é semeado na tabela `admins_iniciais`: quem se cadastrar com o e-mail
 listado ali nasce como **admin** já aprovado. Hoje consta `neves.l@gmail.com`.
