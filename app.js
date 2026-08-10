@@ -1,5 +1,5 @@
 /* ============================================================
-   Campanha Lídice da Mata — aplicação
+   Campanha Lídice da Mata, aplicação
    HTML/JS puro + Supabase. Sem build, sem framework.
    ============================================================ */
 
@@ -1015,7 +1015,7 @@ function desenharBahia() {
               label: c => `${numeroBR(c.parsed.y, itens[0].unidade)} ${itens[0].unidade}`,
               afterLabel: c => {
                 const it = itens[c.dataIndex];
-                return it.confianca === 'parcial' ? 'Dado parcial — conferir na fonte' : '';
+                return it.confianca === 'parcial' ? 'Dado parcial, conferir na fonte' : '';
               }
             }
           }
@@ -1080,7 +1080,7 @@ function desenharNotas() {
   $('#resumo-notas').textContent = !total
     ? 'Nenhuma nota escrita ainda'
     : (lista.length === total
-        ? `${total} nota(s) — o texto fica disponível para toda a equipe`
+        ? `${total} nota(s). O texto fica disponível para toda a equipe`
         : `${lista.length} de ${total} nota(s)`);
 
   // opções de tema, preservando a seleção
