@@ -68,7 +68,8 @@ Vermelho segue reservado para erro e prazo vencido. É a única cor fora da pale
 ## Estrutura
 
 ```
-index.html   marcação e estilos
+index.html         marcação e estilos
+lidice-banner.jpg  foto da campanha usada como marca d'água na faixa de Tarefas
 app.js       toda a lógica
 config.js    endereço e chave publicável do Supabase
 .nojekyll    impede o GitHub Pages de processar os arquivos como Jekyll
