@@ -237,7 +237,8 @@ async function iniciar(sessao) {
   await Promise.all([carregarTarefas(), carregarEventos(), carregarFotos(),
                      carregarNotas(), carregarProjetos(),
                      carregarNoticias(), carregarEntregas(),
-                     carregarDemandas(), carregarIndicadores()]);
+                     carregarDemandas(), carregarTerritorio(),
+                     carregarIndicadores()]);
   escutarTarefas();
 }
 
@@ -1955,3 +1956,125 @@ async function abrirAssinaturaAgenda(forcarNova = false) {
 }
 
 $('#bt-assinar-agenda').onclick = () => abrirAssinaturaAgenda();
+
+
+/* ============================================================
+   Painel de territorio
+   Onde vieram os votos de 2022, cruzado com onde a campanha
+   esta indo agora e de onde vem as demandas.
+   Fonte da votacao: TSE, votacao_candidato_munzona_2022 e
+   detalhe_votacao_munzona_2022.
+   ============================================================ */
+
+const chaveMun = t => (t || '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase().replace(/[^A-Z ]/g, '').trim();
+
+async function carregarTerritorio() {
+  const { data, error } = await sb.from('votacao_2022')
+    .select('*').order('votos', { ascending: false });
+  if (error) return toast(error.message, true);
+  estado.territorio = data || [];
+  desenharTerritorio();
+}
+
+function cruzamentoTerritorio() {
+  const agenda = {};
+  (estado.eventos || []).forEach(e => {
+    if (e.situacao === 'cancelado') return;
+    const k = chaveMun(e.cidade);
+    if (k) agenda[k] = (agenda[k] || 0) + 1;
+  });
+
+  const pedidos = {};
+  (estado.demandas || []).forEach(d => {
+    const k = chaveMun(d.municipio);
+    if (k) pedidos[k] = (pedidos[k] || 0) + 1;
+  });
+
+  return (estado.territorio || []).map(m => {
+    const k = chaveMun(m.municipio);
+    return { ...m, agenda: agenda[k] || 0, demandas: pedidos[k] || 0 };
+  });
+}
+
+function territorioFiltrado(lista) {
+  const b = chaveMun(estado.buscaTerr || '');
+  const f = estado.filtroTerr || '';
+  return lista.filter(m => {
+    if (b && !chaveMun(m.municipio).includes(b)) return false;
+    if (f === 'fortes') return m.votos >= 500;
+    if (f === 'sem_agenda') return m.votos >= 300 && m.agenda === 0;
+    if (f === 'com_demanda') return m.demandas > 0;
+    if (f === 'com_agenda') return m.agenda > 0;
+    return true;
+  });
+}
+
+function desenharTerritorio() {
+  const todas = cruzamentoTerritorio();
+  if (!todas.length) {
+    $('#resumo-territorio').textContent = 'Sem dados de votação carregados';
+    return;
+  }
+
+  const total = todas.reduce((s, m) => s + m.votos, 0);
+  const comVoto = todas.filter(m => m.votos > 0).length;
+
+  // Quantos municipios concentram oitenta por cento dos votos.
+  let soma = 0, nucleo = 0;
+  for (const m of todas) {
+    if (soma >= total * 0.8) break;
+    soma += m.votos; nucleo++;
+  }
+
+  const semAgenda = todas.filter(m => m.votos >= 300 && m.agenda === 0).length;
+
+  $('#resumo-territorio').textContent =
+    `${numeroBR(total)} votos em 2022, presença em ${comVoto} municípios. `
+    + `${nucleo} municípios concentram 80% da votação`
+    + (semAgenda ? `, e ${semAgenda} com base de votos ainda não aparecem na agenda` : '');
+
+  const lista = territorioFiltrado(todas);
+  const maior = Math.max(1, ...lista.map(m => m.votos));
+
+  if (!lista.length) {
+    $('#lista-territorio').innerHTML =
+      '<div class="vazio">Nenhum município neste filtro.</div>';
+    return;
+  }
+
+  $('#lista-territorio').innerHTML = `
+    <table class="tab-terr">
+      <thead>
+        <tr>
+          <th>Município</th>
+          <th class="num">Votos 2022</th>
+          <th class="num">% dos válidos</th>
+          <th class="num">Agenda</th>
+          <th class="num">Demandas</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.slice(0, 200).map(m => `
+          <tr>
+            <td>
+              <div class="mun">${esc(m.municipio)}</div>
+              <div class="barra"><span style="width:${(m.votos / maior * 100).toFixed(1)}%"></span></div>
+            </td>
+            <td class="num forte">${numeroBR(m.votos)}</td>
+            <td class="num">${Number(m.percentual).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
+            <td class="num">${m.agenda
+              ? `<span class="pilula boa">${m.agenda}</span>`
+              : (m.votos >= 300 ? '<span class="pilula alerta">nenhuma</span>' : '<span class="fraco">0</span>')}</td>
+            <td class="num">${m.demandas
+              ? `<span class="pilula">${m.demandas}</span>`
+              : '<span class="fraco">0</span>'}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    ${lista.length > 200 ? `<div class="vazio">Mostrando os 200 primeiros de ${lista.length}. Use a busca para achar um município.</div>` : ''}`;
+}
+
+$('#busca-territorio').oninput = e => { estado.buscaTerr = e.target.value; desenharTerritorio(); };
+$('#filtro-territorio').onchange = e => { estado.filtroTerr = e.target.value; desenharTerritorio(); };
