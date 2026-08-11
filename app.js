@@ -237,7 +237,7 @@ async function iniciar(sessao) {
   await Promise.all([carregarTarefas(), carregarEventos(), carregarFotos(),
                      carregarNotas(), carregarProjetos(),
                      carregarNoticias(), carregarEntregas(),
-                     carregarIndicadores()]);
+                     carregarDemandas(), carregarIndicadores()]);
   escutarTarefas();
 }
 
@@ -1433,3 +1433,317 @@ function desenharEntregas() {
 
 $('#filtro-area-ent').onchange = e => { estado.filtroAreaEnt = e.target.value; desenharEntregas(); };
 $('#filtro-ano-ent').onchange = e => { estado.filtroAnoEnt = e.target.value; desenharEntregas(); };
+
+
+/* ============================================================
+   Demandas de liderancas
+   Quem pediu, de onde veio, o que foi prometido e em que pe esta.
+   ============================================================ */
+
+const SIT_DEMANDA = {
+  registrada: 'Registrada', em_analise: 'Em análise', encaminhada: 'Encaminhada',
+  atendida: 'Atendida', inviavel: 'Inviável'
+};
+
+const AREAS_DEMANDA = [
+  'Educação', 'Saúde', 'Infraestrutura', 'Segurança', 'Cultura',
+  'Emprego e renda', 'Assistência social', 'Esporte e lazer', 'Meio ambiente'
+];
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+const demandaAberta = d => d.situacao !== 'atendida' && d.situacao !== 'inviavel';
+
+async function carregarDemandas() {
+  const { data, error } = await sb.from('demandas').select('*')
+    .order('created_at', { ascending: false });
+  if (error) return toast(error.message, true);
+  estado.demandas = data || [];
+  desenharDemandas();
+}
+
+function demandasFiltradas() {
+  const b = (estado.buscaDem || '').trim().toLowerCase();
+  return estado.demandas.filter(d =>
+    (!estado.filtroSitDem || d.situacao === estado.filtroSitDem) &&
+    (!b || [d.solicitante, d.organizacao, d.municipio, d.pedido, d.compromisso, d.area]
+      .filter(Boolean).join(' ').toLowerCase().includes(b)));
+}
+
+function desenharDemandas() {
+  const todas = estado.demandas || [];
+  const hoje = hojeISO();
+  const abertas = todas.filter(demandaAberta);
+  const vencidas = abertas.filter(d => d.prazo && d.prazo < hoje).length;
+
+  $('#resumo-demandas').textContent = todas.length
+    ? `${todas.length} demanda(s), ${abertas.length} em aberto`
+      + (vencidas ? `, ${vencidas} com prazo vencido` : '')
+    : 'Nenhuma demanda registrada ainda';
+
+  const sel = $('#filtro-sit-dem');
+  if (sel.options.length <= 1) {
+    sel.innerHTML = '<option value="">Todas as situações</option>'
+      + Object.entries(SIT_DEMANDA)
+          .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  }
+
+  const lista = demandasFiltradas();
+  if (!lista.length) {
+    $('#grade-dem').innerHTML =
+      '<div class="cartao"><div class="vazio">Nenhuma demanda neste filtro.</div></div>';
+    return;
+  }
+
+  $('#grade-dem').innerHTML = lista.map(d => {
+    const atrasada = d.prazo && d.prazo < hoje && demandaAberta(d);
+    const origem = [d.organizacao, d.municipio].filter(Boolean).map(esc).join(' · ');
+    const prazo = d.prazo
+      ? (atrasada ? 'venceu em ' : 'prazo ') + dataBR(d.prazo)
+      : 'sem prazo';
+    return `
+      <div class="dem" data-id="${d.id}">
+        <div class="cab">
+          <div>
+            <div class="quem">${esc(d.solicitante)}</div>
+            <div class="onde">${origem || 'Origem não informada'}</div>
+          </div>
+          <span class="sit-dem ${d.situacao}">${SIT_DEMANDA[d.situacao]}</span>
+        </div>
+        <p class="pedido">${esc(d.pedido)}</p>
+        ${d.compromisso ? `<div class="promessa"><b>Compromisso.</b> ${esc(d.compromisso)}</div>` : ''}
+        <div class="pe">
+          <span>${d.area ? esc(d.area) + ' · ' : ''}prioridade ${PRIORIDADES[d.prioridade].toLowerCase()}</span>
+          <span${atrasada ? ' style="color:var(--vermelho);font-weight:600"' : ''}>${prazo}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  $$('#grade-dem .dem').forEach(el => {
+    el.onclick = () => abrirDemanda(el.dataset.id);
+  });
+}
+
+function abrirDemanda(id) {
+  const d = estado.demandas.find(x => String(x.id) === String(id));
+  if (!d) return;
+  const podeApagar = d.criado_por === estado.perfil.id || estado.perfil.papel === 'admin';
+  const ev = d.evento_id ? (estado.eventos || []).find(x => x.id === d.evento_id) : null;
+  const atrasada = d.prazo && d.prazo < hojeISO() && demandaAberta(d);
+
+  const item = (rot, val) => val
+    ? `<div style="margin-bottom:12px">
+         <div class="rot">${rot}</div>
+         <div style="font-size:14px;line-height:1.55">${val}</div>
+       </div>`
+    : '';
+
+  const m = abrirModal(`
+    <header>
+      <h3>${esc(d.solicitante)}</h3>
+      <button class="fechar" data-x>&times;</button>
+    </header>
+    <div class="corpo">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;
+                  font-size:12px;color:var(--texto-2)">
+        <span class="sit-dem ${d.situacao}">${SIT_DEMANDA[d.situacao]}</span>
+        ${d.area ? `<span class="tema">${esc(d.area)}</span>` : ''}
+        <span>prioridade ${PRIORIDADES[d.prioridade].toLowerCase()}</span>
+        <span>·</span>
+        <span>registrada ${quandoRelativo(d.created_at)}</span>
+      </div>
+
+      ${item('Origem', [d.organizacao, d.municipio].filter(Boolean).map(esc).join(' · '))}
+      ${item('Contato', esc(d.contato || ''))}
+      ${item('O que foi pedido', `<div class="leitura">${esc(d.pedido)}</div>`)}
+      ${item('O que foi prometido', d.compromisso
+          ? `<div class="promessa">${esc(d.compromisso)}</div>` : '')}
+      ${item('Responsável', d.responsavel_id ? esc(nomeDe(d.responsavel_id)) : '')}
+      ${item('Prazo', d.prazo
+          ? `<span style="${atrasada ? 'color:var(--vermelho);font-weight:600' : ''}">${dataBR(d.prazo)}${atrasada ? ' (vencido)' : ''}</span>` : '')}
+      ${item('Compromisso da agenda', ev ? esc(ev.titulo) : '')}
+
+      <div class="bloco" style="margin-top:4px">
+        <label class="rot">Mudar a situação</label>
+        <select class="campo" id="d-sit">
+          ${Object.entries(SIT_DEMANDA).map(([k, v]) =>
+            `<option value="${k}" ${d.situacao === k ? 'selected' : ''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <footer>
+      <div style="display:flex;gap:8px">
+        <button class="btn sec" id="d-editar">Editar</button>
+        ${podeApagar ? '<button class="btn sec perigo" id="d-apagar">Excluir</button>' : ''}
+      </div>
+      <button class="btn" data-x>Fechar</button>
+    </footer>`, true);
+
+  $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+
+  $('#d-sit', m).onchange = async e => {
+    const { error } = await sb.from('demandas')
+      .update({ situacao: e.target.value }).eq('id', d.id);
+    if (error) return toast(error.message, true);
+    toast('Situação atualizada.');
+    carregarDemandas();
+  };
+
+  $('#d-editar', m).onclick = () => { fecharModal(); formularioDemanda(d); };
+
+  if (podeApagar) $('#d-apagar', m).onclick = async () => {
+    if (!confirm('Excluir esta demanda? Não dá para desfazer.')) return;
+    const { error } = await sb.from('demandas').delete().eq('id', d.id);
+    if (error) return toast(error.message, true);
+    fecharModal(); toast('Demanda excluída.'); carregarDemandas();
+  };
+}
+
+function formularioDemanda(d = null) {
+  const ed = !!d;
+  const pessoas = (estado.pessoas || []).filter(p => p.aprovado);
+  const eventos = (estado.eventos || [])
+    .filter(e => e.situacao !== 'cancelado')
+    .slice(0, 60);
+  const areas = [...new Set([...AREAS_DEMANDA,
+    ...(estado.demandas || []).map(x => x.area).filter(Boolean)])]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const m = abrirModal(`
+    <header>
+      <h3>${ed ? 'Editar demanda' : 'Nova demanda'}</h3>
+      <button class="fechar" data-x>&times;</button>
+    </header>
+    <div class="corpo">
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Quem pediu</label>
+          <input class="campo" id="d-solicitante" maxlength="120"
+                 value="${esc(d?.solicitante || '')}" placeholder="Ex.: Dona Marlene, do bairro">
+        </div>
+        <div>
+          <label class="rot">Organização</label>
+          <input class="campo" id="d-org" maxlength="120"
+                 value="${esc(d?.organizacao || '')}" placeholder="Associação, sindicato, igreja">
+        </div>
+      </div>
+
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Município ou bairro</label>
+          <input class="campo" id="d-municipio" maxlength="90"
+                 value="${esc(d?.municipio || '')}" placeholder="Ex.: Ilhéus">
+        </div>
+        <div>
+          <label class="rot">Contato</label>
+          <input class="campo" id="d-contato" maxlength="120"
+                 value="${esc(d?.contato || '')}" placeholder="Telefone ou e-mail">
+        </div>
+      </div>
+
+      <div class="bloco">
+        <label class="rot">O que foi pedido</label>
+        <textarea class="campo" id="d-pedido" rows="4"
+                  placeholder="Descreva o pedido com as palavras de quem pediu">${esc(d?.pedido || '')}</textarea>
+      </div>
+
+      <div class="bloco">
+        <label class="rot">O que a campanha prometeu</label>
+        <textarea class="campo" id="d-compromisso" rows="3"
+                  placeholder="Deixe em branco se nada foi prometido">${esc(d?.compromisso || '')}</textarea>
+      </div>
+
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Área</label>
+          <input class="campo" id="d-area" list="lista-areas-dem" maxlength="60"
+                 value="${esc(d?.area || '')}" placeholder="Ex.: Saúde">
+          <datalist id="lista-areas-dem">
+            ${areas.map(a => `<option value="${esc(a)}">`).join('')}
+          </datalist>
+        </div>
+        <div>
+          <label class="rot">Prioridade</label>
+          <select class="campo" id="d-prioridade">
+            ${Object.entries(PRIORIDADES).map(([k, v]) =>
+              `<option value="${k}" ${(d?.prioridade || 'media') === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Situação</label>
+          <select class="campo" id="d-situacao">
+            ${Object.entries(SIT_DEMANDA).map(([k, v]) =>
+              `<option value="${k}" ${(d?.situacao || 'registrada') === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="rot">Prazo</label>
+          <input class="campo" id="d-prazo" type="date" value="${d?.prazo || ''}">
+        </div>
+      </div>
+
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Responsável</label>
+          <select class="campo" id="d-resp">
+            <option value="">Sem responsável</option>
+            ${pessoas.map(p =>
+              `<option value="${p.id}" ${d?.responsavel_id === p.id ? 'selected' : ''}>${esc(p.nome || p.email)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="rot">Surgiu em qual compromisso</label>
+          <select class="campo" id="d-evento">
+            <option value="">Nenhum</option>
+            ${eventos.map(e =>
+              `<option value="${e.id}" ${d?.evento_id === e.id ? 'selected' : ''}>${esc(e.titulo)} (${dataBR(e.inicio)})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <span style="font-size:12px;color:var(--texto-2)">Quem pediu e o pedido são obrigatórios</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn sec" data-x>Cancelar</button>
+        <button class="btn" id="d-salvar">${ed ? 'Salvar' : 'Registrar demanda'}</button>
+      </div>
+    </footer>`, true);
+
+  $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+
+  $('#d-salvar', m).onclick = async () => {
+    const solicitante = $('#d-solicitante', m).value.trim();
+    const pedido = $('#d-pedido', m).value.trim();
+    if (!solicitante) return toast('Diga quem fez o pedido.', true);
+    if (!pedido) return toast('Descreva o que foi pedido.', true);
+
+    const dados = {
+      solicitante,
+      pedido,
+      organizacao: $('#d-org', m).value.trim() || null,
+      municipio: $('#d-municipio', m).value.trim() || null,
+      contato: $('#d-contato', m).value.trim() || null,
+      compromisso: $('#d-compromisso', m).value.trim() || null,
+      area: $('#d-area', m).value.trim() || null,
+      prioridade: $('#d-prioridade', m).value,
+      situacao: $('#d-situacao', m).value,
+      prazo: $('#d-prazo', m).value || null,
+      responsavel_id: $('#d-resp', m).value || null,
+      evento_id: $('#d-evento', m).value || null
+    };
+
+    const { error } = ed
+      ? await sb.from('demandas').update(dados).eq('id', d.id)
+      : await sb.from('demandas').insert(dados);
+    if (error) return toast(error.message, true);
+    fecharModal();
+    toast(ed ? 'Demanda atualizada.' : 'Demanda registrada.');
+    carregarDemandas();
+  };
+}
+
+$('#bt-nova-demanda').onclick = () => formularioDemanda();
+$('#busca-demandas').oninput = e => { estado.buscaDem = e.target.value; desenharDemandas(); };
+$('#filtro-sit-dem').onchange = e => { estado.filtroSitDem = e.target.value; desenharDemandas(); };
