@@ -8,17 +8,28 @@ armazenamento de fotos e atualização em tempo real. Publicada via GitHub Pages
 | Módulo | O que faz |
 |---|---|
 | **Tarefas** | Kanban em quatro colunas, arrastar e soltar, responsável, prazo, prioridade e frente de trabalho. Cada tarefa tem chat de comentários que atualiza em tempo real para todos os logados. |
-| **Agenda** | Compromissos da campanha com data, hora, local, cidade, tipo e situação (confirmado / a confirmar). Separa automaticamente o que ainda vai acontecer do que já passou. |
+| **Agenda** | Compromissos com data, hora, local, cidade, tipo, situação e lista de participantes escolhidos entre os cadastrados. Compromisso cumprido ou cancelado continua visível, com o registro de quem esteve presente. Botão *Assinar no celular* gera um link secreto por pessoa que o calendário do telefone lê sozinho. |
+| **Demandas** | Registro do que as lideranças pedem: quem pediu, organização, município, contato, o pedido nas palavras da pessoa, o que a campanha prometeu, área, prioridade, prazo, responsável e o compromisso da agenda em que o pedido surgiu. Situação em cinco estágios, da entrada ao atendimento. |
+| **Território** | Votação nominal de 2022 por município, cruzada com onde a agenda está indo e de onde vêm as demandas. Aponta os municípios que deram voto e ainda não aparecem na agenda. |
 | **Fotos** | Envio múltiplo para um bucket privado. Visualização em grade com ampliação e download. |
 | **Notas de discurso** | Trechos de fala, dados e respostas prontas, organizados por tema. Busca no texto, contador de palavras com estimativa de tempo de fala e botão de copiar. |
+| **Projetos de Lei** | Proposições da deputada que viraram norma ou foram aprovadas, direto dos dados abertos da Câmara, classificadas nas áreas do Painel Bahia. |
+| **Notícias** | Coleta automática de hora em hora nos feeds do Metrópoles, Bahia Notícias, A Tarde e Correio, filtrada por assunto eleitoral. Matérias que citam o Governador, os candidatos ao Senado ou a deputada ganham etiqueta de destaque. |
+| **Entregas do Estado** | Grandes obras e serviços entregues pelo Governo da Bahia nos últimos doze anos, com o que é, números, por que importa e link para a fonte oficial. |
 | **Painel Bahia** | Indicadores oficiais de economia, emprego e renda, educação, saúde, segurança pública e cultura, com série dos últimos anos, variação, gráfico e link para a fonte. |
 | **Equipe** | Só para administradores. Libera ou bloqueia o acesso de cada pessoa e define o papel. |
+
+### Alerta de prazo
+
+Uma faixa fixa no topo, acima de qualquer tela, junta tarefas e demandas que vencem hoje ou já
+venceram. Fica amarela quando é só o vencimento de hoje e vermelha quando há atraso. Cada item leva
+direto à ficha. O menu lateral mostra a contagem ao lado de *Tarefas* e *Demandas*.
 
 ## Papéis
 
 - **admin**: tudo, incluindo liberar contas e trocar papéis.
 - **candidata**: tudo, mais permissão de editar os indicadores do Painel Bahia.
-- **equipe**: tarefas, comentários, agenda, fotos e notas de discurso; lê o Painel Bahia.
+- **equipe**: tarefas, comentários, agenda, demandas, fotos e notas; lê os painéis.
 
 ## Como se entra
 
@@ -31,9 +42,6 @@ sabe ler o formato de metadados do Google, então, se um dia essa conta existir,
 O primeiro administrador é semeado na tabela `admins_iniciais`: quem se cadastrar com o e-mail
 listado ali nasce como **admin** já aprovado. Hoje consta `neves.l@gmail.com`.
 
-Toda conta nova nasce **bloqueada**. Um administrador precisa liberar em *Equipe*. Isso impede que
-qualquer pessoa que descubra o endereço do site entre nos dados da campanha.
-
 ## Segurança
 
 Os dados são protegidos por *Row Level Security* no Postgres, não pelo front-end. A chave que aparece
@@ -42,10 +50,18 @@ sozinha. Cada consulta é avaliada no banco contra o usuário autenticado.
 
 - Nenhuma linha é legível por quem não está logado.
 - Quem está logado mas não foi liberado não lê nada.
-- Só o autor de uma tarefa, comentário, evento ou foto, ou um administrador, pode excluí-los.
+- Só o autor de uma tarefa, comentário, evento, foto ou demanda, ou um administrador, pode excluí-los.
 - Um usuário comum não consegue se auto-promover a admin nem se auto-liberar: um gatilho no banco
   descarta essas alterações.
 - O bucket de fotos é privado; as imagens são servidas por URL assinada com validade de uma hora.
+
+### O link da agenda
+
+O calendário do celular não sabe enviar cabeçalho de autorização, então a agenda assinável usa um
+token secreto na própria URL. Cada pessoa tem o seu, guardado em `assinaturas_agenda`, e pode trocar
+por um novo a qualquer momento, o que derruba o anterior. Quem perder o acesso à equipe também perde
+o feed: a função confere se o perfil continua aprovado antes de responder. O link dá acesso de
+leitura à agenda inteira, então não deve ser repassado.
 
 ## Paleta
 
@@ -69,10 +85,18 @@ Vermelho segue reservado para erro e prazo vencido. É a única cor fora da pale
 
 ```
 index.html         marcação e estilos
-lidice-banner.jpg  foto da campanha usada como marca d'água na faixa de Tarefas
-app.js       toda a lógica
-config.js    endereço e chave publicável do Supabase
-.nojekyll    impede o GitHub Pages de processar os arquivos como Jekyll
+app.js             toda a lógica
+config.js          endereço e chave publicável do Supabase
+lidice-banner.jpg  foto da campanha, hoje sem uso: a faixa de Tarefas ficou só com as cores
+.nojekyll          impede o GitHub Pages de processar os arquivos como Jekyll
+```
+
+Funções no Supabase:
+
+```
+agenda-ics     serve a agenda em formato de calendário, autenticada pelo token do link
+tse-votacao    desativada; carregou a tabela votacao_2022 a partir dos arquivos do TSE
+tse-amostra    desativada; serviu para inspecionar o formato dos arquivos do TSE
 ```
 
 ## Publicação
@@ -97,3 +121,15 @@ uma linha; o gráfico e a variação se ajustam sozinhos.
 **Sobre o selo "parcial":** marca números que vieram de veículos que citam o órgão oficial, ou de
 estimativas, em vez do documento primário. Antes de usar um desses em debate, vale conferir no link
 da fonte.
+
+**Notícias:** a coleta roda de hora em hora por `pg_cron`, chamando a função `buscar_noticias()`. Os
+feeds ficam na tabela `fontes_noticias`. O filtro combina termos fortes (eleição, pleito, urna),
+combinações de nome de figura com contexto político e uma lista de vetos para barrar homônimos.
+
+**Votação de 2022:** a tabela `votacao_2022` guarda, por município, os votos nominais da candidata e
+o total de votos válidos para deputado federal, com o percentual. Veio de dois arquivos oficiais do
+TSE, `votacao_candidato_munzona_2022` e `detalhe_votacao_munzona_2022`, do
+[Portal de Dados Abertos](https://dadosabertos.tse.jus.br/dataset/resultados-2022). São zips de
+centenas de megabytes, então a carga não baixou os arquivos inteiros: leu o índice do zip e puxou
+por faixa de bytes apenas o CSV da Bahia. O código está no histórico da função `tse-votacao`.
+Para 2026, é repetir com os arquivos do ano novo.
