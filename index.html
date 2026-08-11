@@ -280,6 +280,11 @@ tr:last-child td{border-bottom:none}
 .noticia a{font-size:14.5px;color:var(--texto);text-decoration:none;line-height:1.4;flex:1;min-width:220px}
 .noticia a:hover{color:var(--magenta);text-decoration:underline}
 .noticia .quando{font-size:11.5px;color:var(--texto-2);flex-shrink:0;margin-left:auto}
+.noticia.destaque{background:linear-gradient(90deg,rgba(247,206,23,.14) 0%,rgba(247,206,23,0) 45%);
+  box-shadow:inset 3px 0 0 var(--amarelo)}
+.selo-figura{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.4px;background:var(--amarelo);color:#5A3E00;
+  border-radius:5px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
 
 /* ---------- Participantes do compromisso ---------- */
 .participantes{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
@@ -321,7 +326,7 @@ tr:last-child td{border-bottom:none}
   background:linear-gradient(100deg,#5C2074 0%,#7E2A82 52%,#96246F 100%)}
 .faixa-campanha::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
   background:url('lidice-banner.jpg') no-repeat right 10px top 34%;background-size:auto 250%;
-  opacity:.26;filter:grayscale(1) contrast(1.05);
+  opacity:.18;filter:grayscale(.25) contrast(1.18) brightness(1.06);
   -webkit-mask-image:linear-gradient(90deg,transparent 74%,#000 100%);
   mask-image:linear-gradient(90deg,transparent 74%,#000 100%)}
 .faixa-campanha::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
