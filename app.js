@@ -1851,3 +1851,107 @@ function desenharAlertas() {
     };
   });
 }
+
+
+/* ============================================================
+   Agenda assinavel no celular
+   Gera um link secreto que o calendario do telefone le sozinho
+   e atualiza de hora em hora. Cada pessoa tem o seu, e pode
+   trocar por um novo se perder o telefone.
+   ============================================================ */
+
+const URL_AGENDA_ICS = CONFIG.SUPABASE_URL + '/functions/v1/agenda-ics';
+
+async function assinaturaDaAgenda(forcarNova = false) {
+  if (forcarNova) {
+    await sb.from('assinaturas_agenda')
+      .update({ ativo: false }).eq('profile_id', estado.perfil.id).eq('ativo', true);
+  } else {
+    const { data } = await sb.from('assinaturas_agenda')
+      .select('*').eq('ativo', true).maybeSingle();
+    if (data) return data;
+  }
+
+  const { data: nova, error } = await sb.from('assinaturas_agenda')
+    .insert({ profile_id: estado.perfil.id }).select('*').single();
+  if (error) { toast(error.message, true); return null; }
+  return nova;
+}
+
+async function abrirAssinaturaAgenda(forcarNova = false) {
+  const a = await assinaturaDaAgenda(forcarNova);
+  if (!a) return;
+
+  const url = URL_AGENDA_ICS + '?t=' + a.token;
+  const webcal = url.replace(/^https:/i, 'webcal:');
+
+  const m = abrirModal(`
+    <header>
+      <h3>Agenda no seu celular</h3>
+      <button class="fechar" data-x>&times;</button>
+    </header>
+    <div class="corpo">
+      <p style="font-size:14px;line-height:1.6;color:var(--texto-2);margin-bottom:16px">
+        Este link é só seu. Ao assinar, todo compromisso da campanha aparece no
+        calendário do telefone e continua se atualizando sozinho, mais ou menos
+        de hora em hora. Compromissos cancelados somem da lista.
+      </p>
+
+      <div class="bloco">
+        <label class="rot">Seu link secreto</label>
+        <div class="caixa-link">
+          <input id="a-url" readonly value="${esc(url)}">
+          <button class="btn mini" id="a-copiar">Copiar</button>
+        </div>
+        <small style="display:block;margin-top:7px;font-size:12px;color:var(--texto-2)">
+          Não passe adiante. Quem tiver o link vê a agenda inteira sem precisar de senha.
+        </small>
+      </div>
+
+      <div class="bloco">
+        <label class="rot">No iPhone</label>
+        <ol class="passos">
+          <li>Abra este link no celular ou toque em <b>Assinar agora</b> aqui embaixo.</li>
+          <li>O iPhone pergunta se quer assinar o calendário. Toque em <b>Assinar</b>.</li>
+          <li>Pronto. A agenda entra no app Calendário.</li>
+        </ol>
+      </div>
+
+      <div class="bloco">
+        <label class="rot">No Android ou no Google Agenda</label>
+        <ol class="passos">
+          <li>Abra <b>calendar.google.com</b> num computador.</li>
+          <li>Em <b>Outras agendas</b>, clique no mais e escolha <b>De URL</b>.</li>
+          <li>Cole o link acima e clique em <b>Adicionar agenda</b>.</li>
+          <li>No celular, a agenda aparece no app Google Agenda depois de alguns minutos.</li>
+        </ol>
+      </div>
+    </div>
+    <footer>
+      <button class="btn sec" id="a-trocar">Gerar link novo</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn sec" data-x>Fechar</button>
+        <a class="btn" href="${esc(webcal)}">Assinar agora</a>
+      </div>
+    </footer>`, true);
+
+  $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+
+  $('#a-copiar', m).onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Link copiado.');
+    } catch {
+      $('#a-url', m).select();
+      toast('Selecione o link e use Ctrl+C.', true);
+    }
+  };
+
+  $('#a-trocar', m).onclick = async () => {
+    if (!confirm('Gerar um link novo? O link atual para de funcionar e você precisa assinar de novo em cada aparelho.')) return;
+    fecharModal();
+    abrirAssinaturaAgenda(true);
+  };
+}
+
+$('#bt-assinar-agenda').onclick = () => abrirAssinaturaAgenda();
