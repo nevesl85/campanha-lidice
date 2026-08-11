@@ -1490,7 +1490,10 @@ function desenharDemandas() {
   const lista = demandasFiltradas();
   if (!lista.length) {
     $('#grade-dem').innerHTML =
-      '<div class="cartao"><div class="vazio">Nenhuma demanda neste filtro.</div></div>';
+      '<div class="cartao"><div class="vazio">' + (todas.length
+        ? 'Nenhuma demanda neste filtro.'
+        : 'Nenhuma demanda registrada. Use o botão Nova demanda para começar.')
+      + '</div></div>';
     return;
   }
 
@@ -1573,7 +1576,7 @@ function abrirDemanda(id) {
     <footer>
       <div style="display:flex;gap:8px">
         <button class="btn sec" id="d-editar">Editar</button>
-        ${podeApagar ? '<button class="btn sec perigo" id="d-apagar">Excluir</button>' : ''}
+        ${podeApagar ? '<button class="btn perigo" id="d-apagar">Excluir</button>' : ''}
       </div>
       <button class="btn" data-x>Fechar</button>
     </footer>`, true);
@@ -1584,6 +1587,10 @@ function abrirDemanda(id) {
     const { error } = await sb.from('demandas')
       .update({ situacao: e.target.value }).eq('id', d.id);
     if (error) return toast(error.message, true);
+    const selo = $('.sit-dem', m);
+    selo.className = 'sit-dem ' + e.target.value;
+    selo.textContent = SIT_DEMANDA[e.target.value];
+    d.situacao = e.target.value;
     toast('Situação atualizada.');
     carregarDemandas();
   };
