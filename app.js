@@ -2078,3 +2078,100 @@ function desenharTerritorio() {
 
 $('#busca-territorio').oninput = e => { estado.buscaTerr = e.target.value; desenharTerritorio(); };
 $('#filtro-territorio').onchange = e => { estado.filtroTerr = e.target.value; desenharTerritorio(); };
+
+
+/* ============================================================
+   Instalar na tela inicial
+   No Android e no computador o navegador avisa que o site pode
+   virar aplicativo, e a gente guarda esse aviso para abrir com um
+   toque no nosso botao. No iPhone a Apple nao deixa: la o botao
+   abre um passo a passo. Se ja estiver instalado, o botao some.
+   ============================================================ */
+
+let conviteInstalar = null;
+
+const jaEhApp = () =>
+  window.matchMedia('(display-mode: standalone)').matches
+  || window.matchMedia('(display-mode: minimal-ui)').matches
+  || window.navigator.standalone === true;
+
+const ehIPhone = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function mostrarInstalar(sim) {
+  const b = $('#bt-instalar');
+  if (b) b.classList.toggle('oculto', !sim);
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  conviteInstalar = e;
+  if (!jaEhApp()) mostrarInstalar(true);
+});
+
+window.addEventListener('appinstalled', () => {
+  conviteInstalar = null;
+  mostrarInstalar(false);
+  toast('Pronto. O atalho está na tela inicial.');
+});
+
+function passoAPasso() {
+  const iphone = ehIPhone();
+
+  const m = abrirModal(`
+    <header>
+      <h3>Colocar na tela inicial</h3>
+      <button class="fechar" data-x>&times;</button>
+    </header>
+    <div class="corpo">
+      <p style="font-size:14px;line-height:1.6;color:var(--texto-2);margin-bottom:16px">
+        ${iphone
+          ? 'No iPhone o próprio sistema pede que você faça isso pelo Safari, em dois toques.'
+          : 'Seu navegador não ofereceu a instalação automática. Dá para fazer pelo menu dele, em dois toques.'}
+      </p>
+      <div class="bloco">
+        <ol class="passos">
+          ${iphone ? `
+            <li>Toque no botão de <b>compartilhar</b>, o quadrado com a seta para cima, na barra de baixo.</li>
+            <li>Desça a lista e toque em <b>Adicionar à Tela de Início</b>.</li>
+            <li>Toque em <b>Adicionar</b>, no canto de cima.</li>`
+          : `
+            <li>Abra o menu do navegador, os três pontinhos ao lado da barra de endereço.</li>
+            <li>Toque em <b>Instalar aplicativo</b> ou <b>Adicionar à tela inicial</b>.</li>
+            <li>Confirme. O ícone com a foto aparece junto dos seus outros aplicativos.</li>`}
+        </ol>
+      </div>
+      <p style="font-size:12.5px;color:var(--texto-2);margin-top:14px">
+        Depois disso o sistema abre em tela cheia, sem a barra do navegador,
+        e você continua logado.
+      </p>
+    </div>
+    <footer>
+      <span></span>
+      <button class="btn" data-x>Entendi</button>
+    </footer>`);
+
+  $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+}
+
+async function instalarNaTelaInicial() {
+  if (conviteInstalar) {
+    conviteInstalar.prompt();
+    const escolha = await conviteInstalar.userChoice;
+    conviteInstalar = null;
+    if (escolha.outcome !== 'accepted') {
+      mostrarInstalar(true);
+      toast('Sem problema. O botão continua aí quando quiser.');
+    }
+    return;
+  }
+  passoAPasso();
+}
+
+if ($('#bt-instalar')) {
+  $('#bt-instalar').onclick = instalarNaTelaInicial;
+  // No iPhone o aviso do navegador nunca chega, entao mostramos o
+  // botao assim que der, desde que o site ainda nao seja um app.
+  if (!jaEhApp() && ehIPhone()) mostrarInstalar(true);
+}
