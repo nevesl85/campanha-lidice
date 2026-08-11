@@ -337,6 +337,7 @@ async function carregarTarefas() {
   if (error) return toast(error.message, true);
   estado.tarefas = data || [];
   desenharKanban();
+  desenharAlertas();
 }
 
 function tarefasFiltradas() {
@@ -1459,6 +1460,7 @@ async function carregarDemandas() {
   if (error) return toast(error.message, true);
   estado.demandas = data || [];
   desenharDemandas();
+  desenharAlertas();
 }
 
 function demandasFiltradas() {
@@ -1754,3 +1756,98 @@ function formularioDemanda(d = null) {
 $('#bt-nova-demanda').onclick = () => formularioDemanda();
 $('#busca-demandas').oninput = e => { estado.buscaDem = e.target.value; desenharDemandas(); };
 $('#filtro-sit-dem').onchange = e => { estado.filtroSitDem = e.target.value; desenharDemandas(); };
+
+
+/* ============================================================
+   Alerta de prazo
+   Junta tarefas e demandas que vencem hoje ou ja venceram.
+   Fica fixo no topo, acima da tela aberta, e conta no menu.
+   ============================================================ */
+
+function recorta(txt, n) {
+  const s = (txt || '').replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function itensComPrazo() {
+  const hoje = hojeISO();
+  const itens = [];
+
+  (estado.tarefas || []).forEach(t => {
+    if (t.status === 'concluida' || !t.prazo || t.prazo > hoje) return;
+    itens.push({
+      tipo: 'tarefa', id: t.id, titulo: t.titulo,
+      prazo: t.prazo, quem: t.responsavel_id, venceu: t.prazo < hoje
+    });
+  });
+
+  (estado.demandas || []).forEach(d => {
+    if (!demandaAberta(d) || !d.prazo || d.prazo > hoje) return;
+    itens.push({
+      tipo: 'demanda', id: d.id, titulo: d.solicitante + ': ' + d.pedido,
+      prazo: d.prazo, quem: d.responsavel_id, venceu: d.prazo < hoje
+    });
+  });
+
+  return itens.sort((a, b) => a.prazo.localeCompare(b.prazo));
+}
+
+function contarNoMenu(tela, itens) {
+  const bt = $('nav button[data-tela="' + tela + '"]');
+  if (!bt) return;
+  let selo = $('.conta', bt);
+  if (!itens.length) { if (selo) selo.remove(); return; }
+  if (!selo) {
+    selo = document.createElement('span');
+    selo.className = 'conta';
+    bt.appendChild(selo);
+  }
+  selo.textContent = itens.length;
+  selo.classList.toggle('grave', itens.some(i => i.venceu));
+}
+
+function desenharAlertas() {
+  const caixa = $('#alerta-prazo');
+  if (!caixa) return;
+
+  const itens = itensComPrazo();
+  contarNoMenu('tarefas', itens.filter(i => i.tipo === 'tarefa'));
+  contarNoMenu('demandas', itens.filter(i => i.tipo === 'demanda'));
+
+  if (!itens.length) { caixa.classList.add('oculto'); caixa.innerHTML = ''; return; }
+
+  const vencidos = itens.filter(i => i.venceu);
+  const meus = itens.filter(i => i.quem && i.quem === estado.perfil?.id);
+  const mostrar = itens.slice(0, 5);
+  const resto = itens.length - mostrar.length;
+
+  caixa.classList.remove('oculto');
+  caixa.classList.toggle('grave', vencidos.length > 0);
+
+  caixa.innerHTML = `
+    <div class="cabeca">
+      <span class="ic">${vencidos.length ? '⚠' : '⏱'}</span>
+      <span>${vencidos.length
+        ? `${vencidos.length} prazo(s) vencido(s)`
+        : `${itens.length} prazo(s) para hoje`}</span>
+      ${meus.length ? `<small>${meus.length} com você</small>` : ''}
+    </div>
+    <ul>
+      ${mostrar.map(i => `
+        <li>
+          <button class="ir" data-tipo="${i.tipo}" data-id="${i.id}">${esc(recorta(i.titulo, 74))}</button>
+          <span class="${i.venceu ? 'venceu' : 'hoje'}">${i.venceu ? 'venceu em ' + dataBR(i.prazo) : 'vence hoje'}</span>
+          ${i.quem ? `<span class="dono">${esc(nomeDe(i.quem))}</span>` : ''}
+        </li>`).join('')}
+      ${resto > 0 ? `<li><small>e mais ${resto} item(ns) com prazo</small></li>` : ''}
+    </ul>`;
+
+  $$('.ir', caixa).forEach(b => {
+    b.onclick = () => {
+      const tela = b.dataset.tipo === 'tarefa' ? 'tarefas' : 'demandas';
+      $('nav button[data-tela="' + tela + '"]').click();
+      if (b.dataset.tipo === 'tarefa') abrirTarefa(b.dataset.id);
+      else abrirDemanda(b.dataset.id);
+    };
+  });
+}
