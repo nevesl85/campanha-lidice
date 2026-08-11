@@ -357,6 +357,36 @@ tr:last-child td{border-bottom:none}
 .sit-dem.atendida{background:var(--rosa-clara);color:#9C1B6B}
 .sit-dem.inviavel{background:#fdeceb;color:#a5271b}
 
+/* ---------- Alerta de prazo ---------- */
+#alerta-prazo{background:linear-gradient(100deg,#FFF9E0 0%,#FDF3CE 100%);
+  border:1px solid #F1DE9B;border-left:4px solid var(--amarelo);
+  border-radius:var(--raio);padding:13px 17px;margin-bottom:20px;
+  display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;
+  box-shadow:0 1px 8px rgba(184,30,124,.05)}
+#alerta-prazo.oculto{display:none}
+#alerta-prazo.grave{background:linear-gradient(100deg,#FDEEEC 0%,#FBE4E1 100%);
+  border-color:#F0C6C1;border-left-color:var(--vermelho)}
+#alerta-prazo .cabeca{display:flex;align-items:center;gap:8px;font-size:13.5px;
+  font-weight:700;color:var(--texto);flex-shrink:0}
+#alerta-prazo .cabeca .ic{font-size:15px}
+#alerta-prazo .cabeca small{font-weight:600;font-size:11px;text-transform:uppercase;
+  letter-spacing:.4px;color:var(--texto-2);background:rgba(255,255,255,.72);
+  border-radius:5px;padding:2px 7px}
+#alerta-prazo ul{list-style:none;display:flex;flex-direction:column;gap:4px;
+  flex:1;min-width:250px}
+#alerta-prazo li{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  font-size:12.5px;color:var(--texto-2);line-height:1.5}
+#alerta-prazo button.ir{background:none;padding:0;font-size:13px;font-weight:600;
+  color:var(--magenta);text-align:left;text-decoration:underline;
+  text-underline-offset:2px;text-decoration-color:rgba(184,30,124,.35)}
+#alerta-prazo button.ir:hover{filter:none;text-decoration-color:var(--magenta)}
+#alerta-prazo .venceu{color:var(--vermelho);font-weight:700}
+#alerta-prazo .dono::before{content:'\00B7 '}
+.conta{margin-left:auto;flex-shrink:0;background:var(--amarelo);color:#5A3E00;
+  font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px;
+  min-width:20px;text-align:center}
+.conta.grave{background:var(--vermelho);color:#fff}
+
 /* ---------- Aviso flutuante ---------- */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(120px);
   background:var(--magenta);color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:500;
@@ -459,6 +489,8 @@ tr:last-child td{border-bottom:none}
 
   <main>
     <button class="abre-menu" id="bt-menu">☰</button>
+
+    <div id="alerta-prazo" class="oculto"></div>
 
     <!-- ---- TAREFAS ---- -->
     <section id="tela-tarefas">
