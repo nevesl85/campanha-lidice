@@ -367,6 +367,15 @@ tr:last-child td{border-bottom:none}
 .sit-dem.atendida{background:var(--rosa-clara);color:#9C1B6B}
 .sit-dem.inviavel{background:#fdeceb;color:#a5271b}
 
+/* ---------- Instalar na tela inicial ---------- */
+#bt-instalar{width:100%;margin-top:8px;display:flex;align-items:center;
+  justify-content:center;gap:7px;background:var(--amarelo);color:#5A3E00;
+  font-size:12.5px;font-weight:700;border-radius:8px;padding:8px 11px;
+  box-shadow:0 2px 10px rgba(247,206,23,.28)}
+#bt-instalar:hover{filter:brightness(1.06)}
+#bt-instalar .ic{font-size:14px;line-height:1}
+#bt-instalar.oculto{display:none}
+
 /* ---------- Territorio ---------- */
 .tab-terr{width:100%;border-collapse:collapse;font-size:13.5px}
 .tab-terr th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
@@ -532,6 +541,7 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
           <small id="meu-papel">—</small>
         </div>
       </div>
+      <button class="oculto" id="bt-instalar"><span class="ic">⤓</span> Instalar na tela inicial</button>
       <button class="btn sec mini" id="bt-sair" style="width:100%;margin-top:6px">Sair</button>
     </div>
   </aside>
