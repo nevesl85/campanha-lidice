@@ -1,0 +1,26 @@
+{
+  "name": "Campanha Lídice da Mata",
+  "short_name": "Lídice",
+  "description": "Área de trabalho da equipe da campanha: tarefas, agenda, demandas e painéis de apoio.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FBF5F8",
+  "theme_color": "#B81E7C",
+  "icons": [
+    {
+      "src": "icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
