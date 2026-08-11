@@ -1349,9 +1349,10 @@ function desenharNoticias() {
   }
 
   $('#lista-noticias').innerHTML = lista.map(n => `
-    <div class="noticia">
+    <div class="noticia${n.figura ? ' destaque' : ''}">
       <span class="veic">${esc(n.veiculo)}</span>
       <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.titulo)}</a>
+      ${n.figura ? `<span class="selo-figura">${esc(n.figura)}</span>` : ''}
       <span class="quando">${n.publicado_em ? quandoRelativo(n.publicado_em) : ''}</span>
     </div>`).join('');
 }
