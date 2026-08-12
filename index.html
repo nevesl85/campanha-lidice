@@ -541,6 +541,18 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 #toast.on{transform:translateX(-50%) translateY(0)}
 #toast.erro{background:var(--vermelho)}
 
+/* ---------- Botão de atualizar ---------- */
+#bt-atualizar{position:fixed;right:16px;z-index:90;
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  width:48px;height:48px;border-radius:50%;background:var(--magenta);color:#fff;
+  font-size:22px;line-height:1;display:grid;place-items:center;
+  box-shadow:0 4px 18px rgba(184,30,124,.36);transition:transform .12s}
+#bt-atualizar:active{transform:scale(.92)}
+#bt-atualizar:disabled{opacity:.75;cursor:default}
+#bt-atualizar .gira{display:block}
+#bt-atualizar.girando .gira{animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+
 /* ---------- Responsivo ---------- */
 .abre-menu{display:none}
 @media (max-width:1080px){ .kanban{grid-template-columns:repeat(2,1fr)} }
@@ -862,6 +874,9 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
       <div class="cartao" style="overflow-x:auto"><table id="tab-equipe"></table></div>
     </section>
   </main>
+
+  <button id="bt-atualizar" type="button" title="Atualizar dados"
+          aria-label="Atualizar dados"><span class="gira">⟳</span></button>
 </div>
 
 <div id="modais"></div>
@@ -871,5 +886,6 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="atualizar.js"></script>
 </body>
 </html>
