@@ -237,7 +237,7 @@ async function iniciar(sessao) {
   await Promise.all([carregarTarefas(), carregarEventos(), carregarFotos(),
                      carregarNotas(), carregarProjetos(),
                      carregarNoticias(), carregarEntregas(),
-                     carregarDemandas(), carregarTerritorio(),
+                     carregarDemandas(), carregarTerritorio(), carregarProcessos(),
                      carregarIndicadores()]);
   escutarTarefas();
 }
@@ -342,11 +342,14 @@ async function carregarTarefas() {
 }
 
 function tarefasFiltradas() {
+  const base = estado.filtroCoord
+    ? estado.tarefas.filter(t => t.coordenacao_id === estado.filtroCoord)
+    : estado.tarefas;
   const f = estado.filtroResp;
-  if (!f) return estado.tarefas;
-  if (f === '__eu')  return estado.tarefas.filter(t => t.responsavel_id === estado.perfil.id);
-  if (f === '__sem') return estado.tarefas.filter(t => !t.responsavel_id);
-  return estado.tarefas.filter(t => t.responsavel_id === f);
+  if (!f) return base;
+  if (f === '__eu')  return base.filter(t => t.responsavel_id === estado.perfil.id);
+  if (f === '__sem') return base.filter(t => !t.responsavel_id);
+  return base.filter(t => t.responsavel_id === f);
 }
 
 function desenharKanban() {
@@ -405,7 +408,8 @@ function cartaoTarefa(t) {
       <div class="meta">
         <span class="pastilha p-${t.prioridade}">${PRIORIDADES[t.prioridade]}</span>
         ${t.prazo ? `<span class="${vencida ? 'prazo-vencido' : ''}">${vencida ? '⚠ ' : ''}${dataBR(t.prazo)}</span>` : ''}
-        ${t.area ? `<span>· ${esc(t.area)}</span>` : ''}
+        ${coordDe(t.coordenacao_id) ? `<span>· ${esc(nomeCurtoCoord(t.coordenacao_id))}</span>` : ''}
+        ${seloDoFluxo(t)}
         ${resp ? `<span class="chip-resp" style="margin-left:auto">
                     <span class="bolinha">${esc(iniciais(resp.nome || resp.email))}</span></span>` : ''}
       </div>
@@ -452,8 +456,12 @@ function formularioTarefa(t = null) {
           </select>
         </div>
         <div>
-          <label class="rot">Frente de trabalho</label>
-          <input class="campo" id="f-area" maxlength="60" value="${esc(t?.area || '')}" placeholder="Ex.: Comunicação, Jurídico">
+          <label class="rot">Coordenação</label>
+          <select class="campo" id="f-coord">
+            <option value="">Sem coordenação definida</option>
+            ${(estado.coordenacoes || []).map(c =>
+              `<option value="${c.id}" ${t?.coordenacao_id === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
+          </select>
         </div>
       </div>
       <div class="bloco">
@@ -461,6 +469,15 @@ function formularioTarefa(t = null) {
         <select class="campo" id="f-status">
           ${COLUNAS.map(c => `<option value="${c.id}" ${(t?.status || 'backlog') === c.id ? 'selected' : ''}>${c.nome}</option>`).join('')}
         </select>
+      </div>
+      <div class="bloco">
+        <label class="rot">Segue algum fluxo do processo?</label>
+        <select class="campo" id="f-fluxo">
+          <option value="">Não, é uma tarefa solta</option>
+          ${(estado.fluxos || []).map(f =>
+            `<option value="${f.id}" ${t?.fluxo_id === f.id ? 'selected' : ''}>${f.numero}. ${esc(f.nome)}</option>`).join('')}
+        </select>
+        <small style="display:block;margin-top:6px;font-size:12px;color:var(--texto-2)">Escolhendo um fluxo, a tarefa ganha as etapas do fluxograma como checklist, cada uma com a coordenação responsável.</small>
       </div>
     </div>
     <footer>
@@ -483,7 +500,8 @@ function formularioTarefa(t = null) {
       responsavel_id: $('#f-resp', m).value || null,
       prazo: $('#f-prazo', m).value || null,
       prioridade: $('#f-prio', m).value,
-      area: $('#f-area', m).value.trim() || null,
+      coordenacao_id: $('#f-coord', m).value || null,
+      fluxo_id: $('#f-fluxo', m).value || null,
       status: $('#f-status', m).value
     };
 
@@ -514,7 +532,7 @@ async function abrirTarefa(id) {
           <span class="pastilha p-${t.prioridade}">${PRIORIDADES[t.prioridade]}</span>
           <span>${COLUNAS.find(c => c.id === t.status).nome}</span>
           ${t.prazo ? `<span class="${vencida ? 'prazo-vencido' : ''}">· prazo ${dataBR(t.prazo)}</span>` : ''}
-          ${t.area ? `<span>· ${esc(t.area)}</span>` : ''}
+          ${coordDe(t.coordenacao_id) ? `<span>· ${esc(coordDe(t.coordenacao_id).nome)}</span>` : ''}
         </div>
       </div>
       <button class="fechar" data-x>&times;</button>
@@ -525,6 +543,10 @@ async function abrirTarefa(id) {
         Responsável: <strong style="color:var(--texto)">${t.responsavel_id ? esc(nomeDe(t.responsavel_id)) : 'ninguém ainda'}</strong><br>
         Criada por ${esc(nomeDe(t.criado_por))} em ${dataHoraBR(t.created_at)}
         ${t.concluida_em ? `<br>Concluída em ${dataHoraBR(t.concluida_em)}` : ''}
+      </div>
+      <div class="historico">
+        <h4>Etapas do fluxo</h4>
+        <div id="lista-etapas"><div class="carregando">Carregando…</div></div>
       </div>
       <div class="historico">
         <h4>Movimentações</h4>
@@ -548,6 +570,7 @@ async function abrirTarefa(id) {
     </footer>`, true);
 
   $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+  pintarEtapas(t, m);
   pintarMovimentos(t.id, m);
   $('#bt-editar', m).onclick = () => { fecharModal(); formularioTarefa(t); };
 
@@ -2309,3 +2332,223 @@ async function abrirPainelMovimentos() {
 }
 
 if ($('#bt-movimentos')) $('#bt-movimentos').onclick = abrirPainelMovimentos;
+
+
+/* ============================================================
+   Matriz de responsabilidade e processos
+   O organograma e os quatro fluxogramas aprovados pela
+   Coordenação Geral, desenhados na tela. As tarefas que seguem
+   um fluxo puxam as etapas daqui, com a coordenação de cada uma.
+   ============================================================ */
+
+const coordDe = id => (estado.coordenacoes || []).find(c => c.id === id) || null;
+
+const etapasDoFluxo = fluxoId =>
+  (estado.fluxoEtapas || []).filter(e => e.fluxo_id === fluxoId);
+
+const feitasDaTarefa = tarefaId =>
+  (estado.etapasFeitas || {})[tarefaId] || [];
+
+function progressoDoFluxo(t) {
+  if (!t || !t.fluxo_id) return null;
+  const etapas = etapasDoFluxo(t.fluxo_id);
+  if (!etapas.length) return null;
+  const feitas = feitasDaTarefa(t.id);
+  const pendentes = etapas.filter(e => !feitas.includes(e.id));
+  return {
+    total: etapas.length,
+    feitas: etapas.length - pendentes.length,
+    proxima: pendentes[0] || null,
+    concluido: pendentes.length === 0
+  };
+}
+
+function quemDaEtapa(e) {
+  if (!e) return '';
+  const c = coordDe(e.coordenacao_id);
+  return c ? c.nome.replace('Coordenação de ', '').replace('Coordenação ', '') : (e.quem_rotulo || '');
+}
+
+async function carregarProcessos() {
+  const [coords, fluxos, etapas, feitas] = await Promise.all([
+    sb.from('coordenacoes').select('*').order('ordem'),
+    sb.from('fluxos').select('*').order('ordem'),
+    sb.from('fluxo_etapas').select('*').order('fluxo_id').order('ordem'),
+    sb.from('tarefa_etapas').select('tarefa_id, etapa_id')
+  ]);
+
+  estado.coordenacoes = coords.data || [];
+  estado.fluxos = fluxos.data || [];
+  estado.fluxoEtapas = etapas.data || [];
+
+  estado.etapasFeitas = {};
+  (feitas.data || []).forEach(f => {
+    (estado.etapasFeitas[f.tarefa_id] = estado.etapasFeitas[f.tarefa_id] || []).push(f.etapa_id);
+  });
+
+  preencheFiltroCoordenacao();
+  desenharProcessos();
+  if (estado.tarefas && estado.tarefas.length) desenharKanban();
+}
+
+function preencheFiltroCoordenacao() {
+  const sel = $('#filtro-coord');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todas as coordenações</option>'
+    + (estado.coordenacoes || []).map(c =>
+        `<option value="${c.id}" ${estado.filtroCoord === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+}
+
+function desenharProcessos() {
+  if (!$('#organograma')) return;
+
+  const geral = (estado.coordenacoes || []).find(c => c.geral);
+  const demais = (estado.coordenacoes || []).filter(c => !c.geral);
+
+  $('#resumo-processos').textContent = geral
+    ? `Coordenação Geral com ${geral.responsavel}, mais ${demais.length} coordenações e ${(estado.fluxos || []).length} fluxos de trabalho`
+    : 'Estrutura da campanha';
+
+  const cartao = c => `
+    <div class="coord" style="--cor:${c.cor}">
+      <div class="cab">
+        <span class="marca"></span>
+        <div>
+          <strong>${esc(c.nome)}</strong>
+          <div class="resp">${esc(c.responsavel || 'Sem responsável definido')}</div>
+        </div>
+      </div>
+      <ul>${(c.atribuicoes || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+      <div class="pe">
+        <span class="conta-tar" data-coord="${c.id}"></span>
+      </div>
+    </div>`;
+
+  $('#organograma').innerHTML =
+    (geral ? `<div class="coord-geral">${cartao(geral)}</div>` : '')
+    + `<div class="grade-coord">${demais.map(cartao).join('')}</div>`;
+
+  // Quantas tarefas abertas cada coordenação tem agora.
+  $$('#organograma .conta-tar').forEach(el => {
+    const abertas = (estado.tarefas || []).filter(t =>
+      t.coordenacao_id === el.dataset.coord && t.status !== 'concluida').length;
+    el.innerHTML = abertas
+      ? `<button class="elo-coord" data-ir-coord="${el.dataset.coord}">${abertas} tarefa(s) em aberto</button>`
+      : '<span class="sem-tar">nenhuma tarefa em aberto</span>';
+  });
+
+  $$('#organograma [data-ir-coord]').forEach(b => {
+    b.onclick = () => {
+      estado.filtroCoord = b.dataset.irCoord;
+      $('nav button[data-tela="tarefas"]').click();
+      preencheFiltroCoordenacao();
+      desenharKanban();
+    };
+  });
+
+  $('#lista-fluxos').innerHTML = (estado.fluxos || []).map(f => {
+    const etapas = etapasDoFluxo(f.id);
+    return `
+      <div class="fluxo">
+        <div class="fluxo-cab">
+          <span class="numero">${f.numero}</span>
+          <div>
+            <strong>${esc(f.nome)}</strong>
+            <div class="resumo">${esc(f.resumo || '')}</div>
+          </div>
+        </div>
+        <ol class="etapas">
+          ${etapas.map(e => {
+            const c = coordDe(e.coordenacao_id);
+            const cor = c ? c.cor : 'var(--texto-2)';
+            return `
+              <li style="--cor:${cor}">
+                <div class="quem">${esc(c ? c.nome : (e.quem_rotulo || ''))}${c && c.responsavel ? ` <small>${esc(c.responsavel)}</small>` : ''}</div>
+                <div class="oque">
+                  ${esc(e.titulo)}
+                  ${e.condicional ? `<span class="se">${esc(e.quando || 'Etapa condicional')}</span>` : ''}
+                </div>
+                ${e.detalhe ? `<div class="det">${esc(e.detalhe)}</div>` : ''}
+              </li>`;
+          }).join('')}
+        </ol>
+        ${f.regra ? `<div class="regra"><b>Regra.</b> ${esc(f.regra)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* ---- Checklist do fluxo dentro da tarefa ---- */
+
+async function pintarEtapas(t, m) {
+  const alvo = $('#lista-etapas', m);
+  if (!alvo) return;
+
+  if (!t.fluxo_id) {
+    alvo.innerHTML = '<div class="vazio">Esta tarefa não segue nenhum fluxo. '
+      + 'Se ela faz parte de um processo, escolha o fluxo em Editar.</div>';
+    return;
+  }
+
+  const { data } = await sb.from('tarefa_etapas')
+    .select('*').eq('tarefa_id', t.id);
+  const feitas = {};
+  (data || []).forEach(x => { feitas[x.etapa_id] = x; });
+  estado.etapasFeitas[t.id] = Object.keys(feitas).map(Number);
+
+  const etapas = etapasDoFluxo(t.fluxo_id);
+  const proxima = etapas.find(e => !feitas[e.id]);
+
+  alvo.innerHTML = etapas.map(e => {
+    const f = feitas[e.id];
+    const c = coordDe(e.coordenacao_id);
+    const agora = proxima && proxima.id === e.id;
+    return `
+      <div class="etapa ${f ? 'feita' : ''} ${agora ? 'agora' : ''}" style="--cor:${c ? c.cor : 'var(--borda)'}">
+        <button class="marca-etapa" data-etapa="${e.id}" title="${f ? 'Desmarcar' : 'Marcar como feita'}">
+          ${f ? '✓' : e.ordem}
+        </button>
+        <div>
+          <div class="tit">${esc(e.titulo)}</div>
+          <div class="quem">${esc(c ? c.nome : (e.quem_rotulo || ''))}${c && c.responsavel ? ' · ' + esc(c.responsavel) : ''}</div>
+          ${e.condicional ? `<div class="se">${esc(e.quando || 'Etapa condicional')}</div>` : ''}
+          ${f ? `<div class="assinatura">${esc(f.quem_nome || 'Alguém')} marcou ${quandoRelativo(f.quando)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('')
+  + (proxima
+      ? `<div class="bola-agora">Agora está com <b>${esc(quemDaEtapa(proxima))}</b>: ${esc(proxima.titulo)}</div>`
+      : '<div class="bola-agora pronto">Todas as etapas do fluxo foram cumpridas.</div>');
+
+  $$('.marca-etapa', m).forEach(b => {
+    b.onclick = async () => {
+      const id = Number(b.dataset.etapa);
+      b.disabled = true;
+      const erro = feitas[id]
+        ? (await sb.from('tarefa_etapas').delete().eq('tarefa_id', t.id).eq('etapa_id', id)).error
+        : (await sb.from('tarefa_etapas').insert({ tarefa_id: t.id, etapa_id: id })).error;
+      if (erro) { b.disabled = false; return toast(erro.message, true); }
+      await pintarEtapas(t, m);
+      desenharKanban();
+    };
+  });
+}
+
+if ($('#filtro-coord')) {
+  $('#filtro-coord').onchange = e => {
+    estado.filtroCoord = e.target.value;
+    desenharKanban();
+  };
+}
+
+const nomeCurtoCoord = id => {
+  const c = coordDe(id);
+  return c ? c.nome.replace('Coordenação de ', '').replace('Coordenação ', '') : '';
+};
+
+function seloDoFluxo(t) {
+  const p = progressoDoFluxo(t);
+  if (!p) return '';
+  const quem = p.proxima ? ' · ' + quemDaEtapa(p.proxima) : '';
+  return '<span class="selo-fluxo' + (p.concluido ? ' pronto' : '') + '">'
+    + p.feitas + '/' + p.total + esc(quem) + '</span>';
+}
