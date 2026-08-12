@@ -526,6 +526,10 @@ async function abrirTarefa(id) {
         Criada por ${esc(nomeDe(t.criado_por))} em ${dataHoraBR(t.created_at)}
         ${t.concluida_em ? `<br>Concluída em ${dataHoraBR(t.concluida_em)}` : ''}
       </div>
+      <div class="historico">
+        <h4>Movimentações</h4>
+        <div id="lista-mov"><div class="carregando">Carregando…</div></div>
+      </div>
       <div class="comentarios">
         <h4>Comentários</h4>
         <div id="lista-coment"><div class="carregando">Carregando…</div></div>
@@ -544,6 +548,7 @@ async function abrirTarefa(id) {
     </footer>`, true);
 
   $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+  pintarMovimentos(t.id, m);
   $('#bt-editar', m).onclick = () => { fecharModal(); formularioTarefa(t); };
 
   if (podeApagar) {
@@ -2191,3 +2196,116 @@ if ($('#bt-instalar')) {
   // botao assim que der, desde que o site ainda nao seja um app.
   if (!jaEhApp() && ehIPhone()) mostrarInstalar(true);
 }
+
+
+/* ============================================================
+   Movimentações das tarefas
+   Quem moveu qual card, de onde para onde e quando. O registro
+   e escrito por um gatilho no banco, nao pela tela, entao vale
+   mesmo se alguem alterar a tarefa por outro caminho.
+   ============================================================ */
+
+const nomeColuna = s => {
+  const c = COLUNAS.find(x => x.id === s);
+  return c ? c.nome : s;
+};
+
+function linhaMovimento(mv, comTitulo) {
+  const quem = mv.quem_nome || (mv.quem ? nomeDe(mv.quem) : 'Alguém');
+
+  const oque = mv.retroativo
+    ? `estava em <b>${nomeColuna(mv.para)}</b> quando o registro começou`
+    : mv.de
+      ? `moveu de <b>${nomeColuna(mv.de)}</b> para <b>${nomeColuna(mv.para)}</b>`
+      : `criou a tarefa em <b>${nomeColuna(mv.para)}</b>`;
+
+  return `
+    <div class="mov">
+      <span class="bolinha">${esc(iniciais(quem))}</span>
+      <div>
+        <div class="oque"><b>${esc(quem)}</b> ${oque}</div>
+        ${comTitulo && mv.tarefa ? `<div class="qual">${esc(mv.tarefa)}</div>` : ''}
+        <div class="quando">${quandoRelativo(mv.quando)} · ${dataHoraBR(mv.quando)}</div>
+      </div>
+    </div>`;
+}
+
+async function pintarMovimentos(tarefaId, m) {
+  const alvo = $('#lista-mov', m);
+  if (!alvo) return;
+
+  const { data, error } = await sb.from('tarefa_movimentos')
+    .select('*').eq('tarefa_id', tarefaId).order('quando', { ascending: false });
+
+  if (error) {
+    alvo.innerHTML = '<div class="vazio">Não foi possível ler o histórico.</div>';
+    return;
+  }
+  alvo.innerHTML = (data || []).length
+    ? data.map(mv => linhaMovimento(mv)).join('')
+    : '<div class="vazio">Sem movimentações registradas.</div>';
+}
+
+async function abrirPainelMovimentos() {
+  const pessoas = (estado.pessoas || []).filter(p => p.aprovado);
+
+  const m = abrirModal(`
+    <header>
+      <h3>Movimentações das tarefas</h3>
+      <button class="fechar" data-x>&times;</button>
+    </header>
+    <div class="corpo">
+      <div class="bloco linha-campos">
+        <div>
+          <label class="rot">Quem moveu</label>
+          <select class="campo" id="mv-quem">
+            <option value="">Toda a equipe</option>
+            ${pessoas.map(p => `<option value="${p.id}">${esc(p.nome || p.email)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="rot">Para qual coluna</label>
+          <select class="campo" id="mv-coluna">
+            <option value="">Qualquer uma</option>
+            ${COLUNAS.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div id="mv-lista"><div class="carregando">Carregando…</div></div>
+    </div>
+    <footer>
+      <span style="font-size:12px;color:var(--texto-2)">Últimas 150 movimentações</span>
+      <button class="btn" data-x>Fechar</button>
+    </footer>`, true);
+
+  $$('[data-x]', m).forEach(b => b.onclick = fecharModal);
+
+  const pintar = async () => {
+    const quem = $('#mv-quem', m).value;
+    const coluna = $('#mv-coluna', m).value;
+
+    let consulta = sb.from('tarefa_movimentos')
+      .select('*, tarefas(titulo)')
+      .order('quando', { ascending: false })
+      .limit(150);
+    if (quem) consulta = consulta.eq('quem', quem);
+    if (coluna) consulta = consulta.eq('para', coluna);
+
+    const { data, error } = await consulta;
+    const alvo = $('#mv-lista', m);
+    if (error) {
+      alvo.innerHTML = '<div class="vazio">' + esc(error.message) + '</div>';
+      return;
+    }
+    const lista = (data || []).map(x => ({ ...x, tarefa: x.tarefas ? x.tarefas.titulo : null }));
+    alvo.innerHTML = lista.length
+      ? lista.map(mv => linhaMovimento(mv, true)).join('')
+      : '<div class="vazio">Nenhuma movimentação com esses filtros.</div>';
+  };
+
+  $('#mv-quem', m).onchange = pintar;
+  $('#mv-coluna', m).onchange = pintar;
+  pintar();
+}
+
+if ($('#bt-movimentos')) $('#bt-movimentos').onclick = abrirPainelMovimentos;
