@@ -617,6 +617,11 @@ async function carregarEventos() {
   desenharAgenda();
 }
 
+// Confirmar compromisso e ato de administrador. A trava de verdade
+// esta no banco, num gatilho; aqui so evitamos oferecer o que vai
+// ser recusado.
+const souAdmin = () => estado.perfil && estado.perfil.papel === 'admin';
+
 function desenharAgenda() {
   const agora = new Date();
   const futuros = estado.eventos.filter(e => new Date(e.fim || e.inicio) >= agora);
@@ -649,6 +654,8 @@ function desenharAgenda() {
           </div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
+          ${souAdmin() && e.situacao === 'a_confirmar' && !passou
+            ? `<button class="btn mini" data-conf-ev="${e.id}">Confirmar</button>` : ''}
           <button class="btn sec mini" data-ed-ev="${e.id}">Editar</button>
           ${podeApagar ? `<button class="btn sec mini" data-del-ev="${e.id}">Excluir</button>` : ''}
         </div>
@@ -663,6 +670,12 @@ function desenharAgenda() {
              border-bottom:1px solid var(--borda)">Já aconteceram</div>` + passados.map(linha).join('') : '')
       : '<div class="vazio"><span class="big">▤</span>Nenhum compromisso cadastrado ainda.</div>';
 
+  $$('[data-conf-ev]').forEach(b => b.onclick = async () => {
+    const { error } = await sb.from('eventos')
+      .update({ situacao: 'confirmado' }).eq('id', b.dataset.confEv);
+    if (error) return toast(error.message, true);
+    toast('Compromisso confirmado.'); carregarEventos();
+  });
   $$('[data-ed-ev]').forEach(b => b.onclick = () =>
     formularioEvento(estado.eventos.find(e => e.id === b.dataset.edEv)));
   $$('[data-del-ev]').forEach(b => b.onclick = async () => {
@@ -710,10 +723,13 @@ function formularioEvento(e = null) {
               .map(x => `<option ${e?.tipo === x ? 'selected' : ''}>${x}</option>`).join('')}
           </select></div>
         <div><label class="rot">Situação</label>
-          <select class="campo" id="e-sit">
+          ${!ed
+            ? `<input class="campo" value="A confirmar" disabled
+                      title="Todo compromisso entra como a confirmar. Um administrador confirma depois.">`
+            : `<select class="campo" id="e-sit">
             ${Object.entries(SIT_EVENTO).map(([k, v]) =>
-              `<option value="${k}" ${(e?.situacao || 'a_confirmar') === k ? 'selected' : ''}>${v}</option>`).join('')}
-          </select></div>
+              `<option value="${k}" ${e.situacao === k ? 'selected' : ''}${k === 'confirmado' && !souAdmin() ? ' disabled' : ''}>${v}</option>`).join('')}
+          </select>`}</div>
       </div>
       <div class="bloco">
         <label class="rot">Quem participa</label>
@@ -754,7 +770,7 @@ function formularioEvento(e = null) {
       local: $('#e-local', m).value.trim() || null,
       cidade: $('#e-cidade', m).value.trim() || null,
       tipo: $('#e-tipo', m).value,
-      situacao: $('#e-sit', m).value,
+      situacao: $('#e-sit', m) ? $('#e-sit', m).value : 'a_confirmar',
       descricao: $('#e-desc', m).value.trim()
     };
 
